@@ -83,6 +83,21 @@ $results = Plugin::getInstance()->apiClient->search('my-index', 'chair', 20, 1);
 
 Visit **Collections Proxy** in the main CP nav for a simple search form that calls the configured API via `Craft.sendActionRequest`. Useful for smoke-testing the API connection without leaving Craft.
 
+## Development
+
+```bash
+composer install
+composer test       # phpunit — 14 tests, 39 assertions, MockHandler-based (no live HTTP)
+composer phpstan    # phpstan level 8, no baseline
+```
+
+Or from a consuming DDEV project that bind-mounts this repo:
+
+```bash
+ddev exec bash -c "cd /var/www/craft-collections-proxy && vendor/bin/phpunit"
+ddev exec bash -c "cd /var/www/craft-collections-proxy && composer phpstan"
+```
+
 ## Expected API contract
 
 The plugin assumes the backend speaks:
