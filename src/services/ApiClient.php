@@ -2,9 +2,7 @@
 
 namespace cogapp\collectionsproxy\services;
 
-use Craft;
 use cogapp\collectionsproxy\Plugin;
-use craft\helpers\App;
 use GuzzleHttp\Client as GuzzleClient;
 use GuzzleHttp\Exception\ClientException;
 use yii\base\Component;
@@ -21,10 +19,32 @@ use yii\base\Component;
  *
  * Used by the Twig `{% collectionDocument %}` tag and available for
  * programmatic use via Plugin::getInstance()->apiClient.
+ *
+ * Test seams: callers can override `$baseUri`, `$itemFields`,
+ * `$displayFields`, or inject a pre-configured `GuzzleClient` via
+ * `setClient()` to run without a full Craft bootstrap.
  */
 class ApiClient extends Component
 {
+    /** Base URI override. Falls back to the plugin settings when null. */
+    public ?string $baseUri = null;
+
+    /** Fields query override for getDocument(). Falls back to plugin settings when null. */
+    public ?string $itemFields = null;
+
+    /** Fields query override for search(). Falls back to plugin settings when null. */
+    public ?string $displayFields = null;
+
+    /** Whether Guzzle verifies SSL. Default true; false in dev-mode fallback. */
+    public ?bool $verify = null;
+
     private ?GuzzleClient $client = null;
+
+    /** Test seam: inject a pre-built Guzzle client (with mocked handler, etc.). */
+    public function setClient(GuzzleClient $client): void
+    {
+        $this->client = $client;
+    }
 
     private function client(): ?GuzzleClient
     {
@@ -32,19 +52,16 @@ class ApiClient extends Component
             return $this->client;
         }
 
-        $settings = Plugin::getInstance()->getSettings();
-        $baseUri = App::parseEnv($settings->serverApiUrl);
+        $baseUri = $this->resolveBaseUri();
         if (!$baseUri) {
             return null;
         }
-
-        $isDev = App::env('CRAFT_ENVIRONMENT') === 'dev';
 
         $this->client = new GuzzleClient([
             'base_uri' => $baseUri,
             'timeout' => 30,
             'connect_timeout' => 10,
-            'verify' => !$isDev,
+            'verify' => $this->resolveVerify(),
             'headers' => [
                 'User-Agent' => 'craft-collections-proxy/1.0',
                 'Accept' => 'application/json',
@@ -52,6 +69,65 @@ class ApiClient extends Component
         ]);
 
         return $this->client;
+    }
+
+    protected function resolveBaseUri(): ?string
+    {
+        if ($this->baseUri !== null) {
+            return $this->baseUri;
+        }
+        // In a test context, Plugin (and Yii) aren't loaded. Skip without autoloading.
+        if (!class_exists(Plugin::class, false)) {
+            return null;
+        }
+        $plugin = Plugin::getInstance();
+        if (!$plugin) {
+            return null;
+        }
+        $raw = $plugin->getSettings()->serverApiUrl;
+        return class_exists(\craft\helpers\App::class, false) ? \craft\helpers\App::parseEnv($raw) : $raw;
+    }
+
+    protected function resolveVerify(): bool
+    {
+        if ($this->verify !== null) {
+            return $this->verify;
+        }
+        if (class_exists(\craft\helpers\App::class, false) && \craft\helpers\App::env('CRAFT_ENVIRONMENT') === 'dev') {
+            return false;
+        }
+        return true;
+    }
+
+    protected function resolveItemFields(): string
+    {
+        if ($this->itemFields !== null) {
+            return $this->itemFields;
+        }
+        if (!class_exists(Plugin::class, false)) {
+            return '';
+        }
+        $plugin = Plugin::getInstance();
+        return $plugin ? (string) $plugin->getSettings()->itemFields : '';
+    }
+
+    protected function resolveDisplayFields(): string
+    {
+        if ($this->displayFields !== null) {
+            return $this->displayFields;
+        }
+        if (!class_exists(Plugin::class, false)) {
+            return '';
+        }
+        $plugin = Plugin::getInstance();
+        return $plugin ? (string) $plugin->getSettings()->displayFields : '';
+    }
+
+    protected function logError(string $message): void
+    {
+        if (class_exists(\Craft::class, false)) {
+            \Craft::error($message, __METHOD__);
+        }
     }
 
     /**
@@ -67,9 +143,9 @@ class ApiClient extends Component
         }
 
         $queryParams = [];
-        $itemFields = Plugin::getInstance()->getSettings()->itemFields;
-        if ($itemFields !== '') {
-            $queryParams['fields'] = $itemFields;
+        $fields = $this->resolveItemFields();
+        if ($fields !== '') {
+            $queryParams['fields'] = $fields;
         }
 
         try {
@@ -80,10 +156,10 @@ class ApiClient extends Component
             if ($e->getResponse() && $e->getResponse()->getStatusCode() === 404) {
                 return null;
             }
-            Craft::error('Collections API getDocument error: ' . $e->getMessage(), __METHOD__);
+            $this->logError('Collections API getDocument error: ' . $e->getMessage());
             return null;
         } catch (\Exception $e) {
-            Craft::error('Collections API getDocument error: ' . $e->getMessage(), __METHOD__);
+            $this->logError('Collections API getDocument error: ' . $e->getMessage());
             return null;
         }
     }
@@ -91,10 +167,6 @@ class ApiClient extends Component
     /**
      * Search an index. Returns a normalised shape:
      *   ['results' => [...], 'totalResults' => int, 'took' => int]
-     *
-     * Available as an escape hatch for server-side search. The React
-     * frontend calls the API directly from the browser — this is only
-     * for unusual cases (admin tooling, exports, etc.).
      */
     public function search(string $index, string $query = '', int $perPage = 20, int $page = 1): array
     {
@@ -108,29 +180,41 @@ class ApiClient extends Component
             $queryParams['q'] = $query;
         }
 
-        $displayFields = Plugin::getInstance()->getSettings()->displayFields;
-        if ($displayFields !== '') {
-            $queryParams['fields'] = $displayFields;
+        $fields = $this->resolveDisplayFields();
+        if ($fields !== '') {
+            $queryParams['fields'] = $fields;
         }
 
         try {
             $response = $client->get("/api/{$index}", ['query' => $queryParams]);
             $body = json_decode($response->getBody()->getContents(), true) ?: [];
         } catch (\Exception $e) {
-            Craft::error('Collections API search error: ' . $e->getMessage(), __METHOD__);
+            $this->logError('Collections API search error: ' . $e->getMessage());
             return ['results' => [], 'totalResults' => 0, 'took' => 0];
         }
 
+        return self::parseSearchResponse($body);
+    }
+
+    /**
+     * Pure parser for an OpenSearch-shaped search response. Extracted so
+     * it can be unit tested without any HTTP or Craft dependencies.
+     *
+     * @param array $body Decoded response body
+     * @return array{results: array<int, array{id: mixed, source: array}>, totalResults: int, took: int}
+     */
+    public static function parseSearchResponse(array $body): array
+    {
         $hits = $body['hits']['hits'] ?? [];
         $results = array_map(
             fn(array $hit) => ['id' => $hit['_id'] ?? null, 'source' => $hit['_source'] ?? []],
-            $hits,
+            is_array($hits) ? $hits : [],
         );
 
         return [
             'results' => $results,
-            'totalResults' => $body['hits']['total']['value'] ?? 0,
-            'took' => $body['took'] ?? 0,
+            'totalResults' => (int) ($body['hits']['total']['value'] ?? 0),
+            'took' => (int) ($body['took'] ?? 0),
         ];
     }
 }
