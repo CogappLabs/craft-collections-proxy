@@ -23,14 +23,8 @@ class Settings extends Model
     /** Field used as the item title on item pages and in the search UI. */
     public string $titleField = 'title';
 
-    /** Comma-separated list of fields to search in (supports wildcards like `description*`). */
-    public string $searchFields = 'title,description*';
-
     /** Comma-separated fields returned for item/document pages. Empty = all. */
     public string $itemFields = '';
-
-    /** Comma-separated fields returned for search results. Empty = all. */
-    public string $displayFields = '';
 
     public function behaviors(): array
     {
@@ -51,7 +45,7 @@ class Settings extends Model
     {
         return [
             [['serverApiUrl', 'publicApiUrl', 'index'], 'string'],
-            [['titleField', 'searchFields', 'itemFields', 'displayFields'], 'string'],
+            [['titleField', 'itemFields'], 'string'],
             [['serverApiUrl', 'publicApiUrl', 'index'], 'required'],
         ];
     }

@@ -36,32 +36,16 @@
 
 {{ forms.textField({
     label: "Title field"|t('collections-proxy'),
-    instructions: "Document field used as the item title (e.g. `title`).",
+    instructions: "Document field used as the item page heading (e.g. `title`). Searchkit's own `search_attributes` are configured client-side.",
     id: 'titleField',
     name: 'titleField',
     value: settings.titleField,
 }) }}
 
 {{ forms.textField({
-    label: "Search fields"|t('collections-proxy'),
-    instructions: "Comma-separated fields to search, wildcards allowed (e.g. `title,description*`).",
-    id: 'searchFields',
-    name: 'searchFields',
-    value: settings.searchFields,
-}) }}
-
-{{ forms.textField({
     label: "Item fields"|t('collections-proxy'),
-    instructions: "Comma-separated fields returned for item/document pages. Leave empty for all.",
+    instructions: "Comma-separated fields returned by the `{% collectionDocument %}` Twig tag on item pages. Passed to the API's `?fields=` param. Leave empty for all.",
     id: 'itemFields',
     name: 'itemFields',
     value: settings.itemFields,
-}) }}
-
-{{ forms.textField({
-    label: "Display fields"|t('collections-proxy'),
-    instructions: "Comma-separated fields returned for search results. Leave empty for all.",
-    id: 'displayFields',
-    name: 'displayFields',
-    value: settings.displayFields,
 }) }}

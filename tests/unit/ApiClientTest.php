@@ -70,7 +70,6 @@ class ApiClientTest extends TestCase
             [new Response(200, [], '{"hits":{"hits":[],"total":{"value":0}}}')],
             $history,
         );
-        $client->displayFields = 'title,artist_names';
         $client->search('my-index', 'hello world', 10, 2);
 
         /** @var Request $req */
@@ -81,7 +80,8 @@ class ApiClientTest extends TestCase
         self::assertSame('hello world', $query['q']);
         self::assertSame('10', $query['perPage']);
         self::assertSame('2', $query['page']);
-        self::assertSame('title,artist_names', $query['fields']);
+        // search() no longer sends fields= (displayFields was removed as a plugin setting)
+        self::assertArrayNotHasKey('fields', $query);
     }
 
     public function testSearchOmitsEmptyQueryAndFields(): void

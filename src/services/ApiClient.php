@@ -32,9 +32,6 @@ class ApiClient extends Component
     /** Fields query override for getDocument(). Falls back to plugin settings when null. */
     public ?string $itemFields = null;
 
-    /** Fields query override for search(). Falls back to plugin settings when null. */
-    public ?string $displayFields = null;
-
     /** Whether Guzzle verifies SSL. Default true; false in dev-mode fallback. */
     public ?bool $verify = null;
 
@@ -115,18 +112,6 @@ class ApiClient extends Component
         return $plugin ? (string) $plugin->getSettings()->itemFields : '';
     }
 
-    protected function resolveDisplayFields(): string
-    {
-        if ($this->displayFields !== null) {
-            return $this->displayFields;
-        }
-        if (!class_exists(Plugin::class, false)) {
-            return '';
-        }
-        $plugin = Plugin::getInstance();
-        return $plugin ? (string) $plugin->getSettings()->displayFields : '';
-    }
-
     protected function logError(string $message): void
     {
         if (class_exists(\Craft::class, false)) {
@@ -174,6 +159,10 @@ class ApiClient extends Component
      * Search an index. Returns a normalised shape:
      *   ['results' => [...], 'totalResults' => int, 'took' => int]
      *
+     * Used by the plugin's CP search panel and any custom PHP callers.
+     * The React/Searchkit frontend does NOT use this — it talks to the
+     * API directly and defines its own result projection client-side.
+     *
      * @return array{results: array<int, array{id: mixed, source: array<string, mixed>}>, totalResults: int, took: int}
      */
     public function search(string $index, string $query = '', int $perPage = 20, int $page = 1): array
@@ -186,11 +175,6 @@ class ApiClient extends Component
         $queryParams = ['perPage' => $perPage, 'page' => $page];
         if ($query !== '') {
             $queryParams['q'] = $query;
-        }
-
-        $fields = $this->resolveDisplayFields();
-        if ($fields !== '') {
-            $queryParams['fields'] = $fields;
         }
 
         try {
