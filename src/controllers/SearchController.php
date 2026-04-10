@@ -23,14 +23,20 @@ class SearchController extends Controller
     {
         $this->requirePermission('accessCp');
 
+        /** @var \craft\web\Request $request */
         $request = Craft::$app->getRequest();
         $index = (string) $request->getQueryParam('index', '');
         $query = (string) $request->getQueryParam('q', '');
         $perPage = (int) $request->getQueryParam('perPage', 20);
         $page = (int) $request->getQueryParam('page', 1);
 
+        $plugin = Plugin::getInstance();
+        if ($plugin === null) {
+            return $this->asJson(['error' => 'Plugin not available.']);
+        }
+
         if ($index === '') {
-            $index = Plugin::getInstance()->getSettings()->index;
+            $index = $plugin->getSettings()->index;
         }
 
         if ($index === '') {
@@ -42,7 +48,7 @@ class SearchController extends Controller
             ]);
         }
 
-        $result = Plugin::getInstance()->apiClient->search($index, $query, $perPage, $page);
+        $result = $plugin->apiClient->search($index, $query, $perPage, $page);
 
         return $this->asJson($result);
     }

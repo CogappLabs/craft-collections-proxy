@@ -46,6 +46,7 @@ class Settings extends Model
         ];
     }
 
+    /** @return array<int, array<int|string, mixed>> */
     public function defineRules(): array
     {
         return [

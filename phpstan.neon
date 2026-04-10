@@ -1,0 +1,20 @@
+parameters:
+    level: 8
+    paths:
+        - src
+    excludePaths:
+        - tests
+    # Scan Craft + Yii entry classes so PHPStan resolves the `Craft`
+    # global alias and Yii base classes without the craftcms/phpstan
+    # stub package.
+    scanFiles:
+        - vendor/craftcms/cms/src/Craft.php
+        - vendor/yiisoft/yii2/Yii.php
+    # Borrowed from craftcms/phpstan — mark these as never-returning
+    # so PHPStan's control-flow analysis treats code after them as
+    # unreachable.
+    earlyTerminatingMethodCalls:
+        Craft:
+            - dd
+        yii\base\Application:
+            - end

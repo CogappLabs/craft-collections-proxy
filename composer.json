@@ -3,12 +3,36 @@
     "description": "Craft CMS plugin that exposes a lightweight HTTP client and Twig tag for a read-only Collections API (Elasticsearch / OpenSearch shape).",
     "type": "craft-plugin",
     "license": "MIT",
+    "keywords": [
+        "craft",
+        "craftcms",
+        "craft-plugin",
+        "collections",
+        "elasticsearch",
+        "opensearch",
+        "searchkit",
+        "api",
+        "proxy",
+        "twig"
+    ],
+    "authors": [
+        {
+            "name": "Cogapp",
+            "homepage": "https://www.cogapp.com"
+        }
+    ],
+    "support": {
+        "issues": "https://github.com/CogappLabs/craft-collections-proxy/issues",
+        "source": "https://github.com/CogappLabs/craft-collections-proxy",
+        "docs": "https://github.com/CogappLabs/craft-collections-proxy/blob/main/README.md"
+    },
     "require": {
         "php": "^8.3",
         "craftcms/cms": "^5.0",
         "guzzlehttp/guzzle": "^7.0"
     },
     "require-dev": {
+        "phpstan/phpstan": "^1.12",
         "phpunit/phpunit": "^11.0"
     },
     "autoload": {
@@ -25,16 +49,22 @@
         "allow-plugins": {
             "yiisoft/yii2-composer": true,
             "craftcms/plugin-installer": true
-        }
+        },
+        "sort-packages": true
     },
     "scripts": {
-        "test": "phpunit"
+        "test": "phpunit",
+        "phpstan": "phpstan --memory-limit=1G"
     },
     "extra": {
         "handle": "collections-proxy",
         "name": "Collections Proxy",
+        "description": "Read-only HTTP client + Twig tag for a Collections API (ES/OS shape).",
         "developer": "Cogapp",
-        "documentationUrl": "https://github.com/cogapp/craft-collections-proxy",
+        "developerUrl": "https://www.cogapp.com",
+        "documentationUrl": "https://github.com/CogappLabs/craft-collections-proxy",
         "class": "cogapp\\collectionsproxy\\Plugin"
-    }
+    },
+    "minimum-stability": "dev",
+    "prefer-stable": true
 }

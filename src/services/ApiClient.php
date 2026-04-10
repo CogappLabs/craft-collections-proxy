@@ -85,7 +85,11 @@ class ApiClient extends Component
             return null;
         }
         $raw = $plugin->getSettings()->serverApiUrl;
-        return class_exists(\craft\helpers\App::class, false) ? \craft\helpers\App::parseEnv($raw) : $raw;
+        if (!class_exists(\craft\helpers\App::class, false)) {
+            return $raw;
+        }
+        $parsed = \craft\helpers\App::parseEnv($raw);
+        return is_string($parsed) ? $parsed : null;
     }
 
     protected function resolveVerify(): bool
@@ -134,6 +138,8 @@ class ApiClient extends Component
      * Fetch a single document by ID.
      * Returns the _source array, or null if the document is missing
      * or the request fails.
+     *
+     * @return array<string, mixed>|null
      */
     public function getDocument(string $index, string $id): ?array
     {
@@ -153,7 +159,7 @@ class ApiClient extends Component
             $source = json_decode($response->getBody()->getContents(), true);
             return is_array($source) ? $source : null;
         } catch (ClientException $e) {
-            if ($e->getResponse() && $e->getResponse()->getStatusCode() === 404) {
+            if ($e->getResponse()->getStatusCode() === 404) {
                 return null;
             }
             $this->logError('Collections API getDocument error: ' . $e->getMessage());
@@ -167,6 +173,8 @@ class ApiClient extends Component
     /**
      * Search an index. Returns a normalised shape:
      *   ['results' => [...], 'totalResults' => int, 'took' => int]
+     *
+     * @return array{results: array<int, array{id: mixed, source: array<string, mixed>}>, totalResults: int, took: int}
      */
     public function search(string $index, string $query = '', int $perPage = 20, int $page = 1): array
     {
@@ -200,15 +208,18 @@ class ApiClient extends Component
      * Pure parser for an OpenSearch-shaped search response. Extracted so
      * it can be unit tested without any HTTP or Craft dependencies.
      *
-     * @param array $body Decoded response body
-     * @return array{results: array<int, array{id: mixed, source: array}>, totalResults: int, took: int}
+     * @param array<string, mixed> $body Decoded response body
+     * @return array{results: array<int, array{id: mixed, source: array<string, mixed>}>, totalResults: int, took: int}
      */
     public static function parseSearchResponse(array $body): array
     {
-        $hits = $body['hits']['hits'] ?? [];
+        $hitsEnvelope = is_array($body['hits'] ?? null) ? $body['hits'] : [];
+        $rawHits = $hitsEnvelope['hits'] ?? [];
+        $hits = is_array($rawHits) ? $rawHits : [];
+
         $results = array_map(
             fn(array $hit) => ['id' => $hit['_id'] ?? null, 'source' => $hit['_source'] ?? []],
-            is_array($hits) ? $hits : [],
+            $hits,
         );
 
         return [
