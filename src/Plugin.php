@@ -22,8 +22,8 @@ class Plugin extends BasePlugin
 {
     public string $schemaVersion = '1.0.0';
     public bool $hasCpSettings = true;
-    public bool $hasCpSection = true;
 
+    /** @return array<string, array<string, mixed>> */
     public static function config(): array
     {
         return [
@@ -41,7 +41,9 @@ class Plugin extends BasePlugin
 
         $this->controllerNamespace = 'cogapp\\collectionsproxy\\controllers';
 
-        Craft::$app->onInit(function () {
+        /** @var \craft\web\Application|\craft\console\Application $app */
+        $app = Craft::$app;
+        $app->onInit(function () {
             $this->registerTwigExtension();
             $this->registerCpUrlRules();
             $this->registerCpNav();
@@ -55,7 +57,9 @@ class Plugin extends BasePlugin
 
     protected function settingsHtml(): ?string
     {
-        return Craft::$app->getView()->renderTemplate(
+        /** @var \craft\web\View $view */
+        $view = Craft::$app->getView();
+        return $view->renderTemplate(
             'collections-proxy/_settings',
             ['settings' => $this->getSettings()],
         );
@@ -63,7 +67,9 @@ class Plugin extends BasePlugin
 
     private function registerTwigExtension(): void
     {
-        Craft::$app->getView()->registerTwigExtension(new TwigExtension());
+        /** @var \craft\web\View $view */
+        $view = Craft::$app->getView();
+        $view->registerTwigExtension(new TwigExtension());
     }
 
     private function registerCpUrlRules(): void
