@@ -94,6 +94,16 @@ class Plugin extends BasePlugin
                     'url' => 'collections-proxy',
                     'label' => 'Collections Proxy',
                     'icon' => '@appicons/search.svg',
+                    'subnav' => [
+                        'search' => [
+                            'label' => 'Search',
+                            'url' => 'collections-proxy',
+                        ],
+                        'settings' => [
+                            'label' => 'Settings',
+                            'url' => 'settings/plugins/collections-proxy',
+                        ],
+                    ],
                 ];
             },
         );
