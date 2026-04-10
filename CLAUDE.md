@@ -25,10 +25,10 @@ All three speak identical endpoints, so the backend can be swapped by changing t
 
 ## What the plugin provides
 
-- **Plugin settings** (`src/models/Settings.php`) — native Craft `Model` with `EnvAttributeParserBehavior` on the `serverApiUrl`, `publicApiUrl`, and `index` attributes. Visible at **Settings → Plugins → Collections Proxy**. Other fields: `titleField`, `searchFields`, `itemFields`, `displayFields`.
-- **`ApiClient` service** (`src/services/ApiClient.php`) — Guzzle-based HTTP client with injectable client for tests. Methods: `search($index, $query, $perPage, $page)` returns `['results' => [...], 'totalResults' => int, 'took' => int]`; `getDocument($index, $id)` returns the `_source` document directly.
+- **Plugin settings** (`src/models/Settings.php`) — native Craft `Model` with `EnvAttributeParserBehavior` on the `serverApiUrl`, `publicApiUrl`, and `index` attributes. Visible at **Settings → Plugins → Collections Proxy**. Other fields: `titleField`, `itemFields`. (`searchFields` and `displayFields` were removed — they were Searchkit/frontend concerns that bled through. Hardcode search + result attributes in your consuming site's React code.)
+- **`ApiClient` service** (`src/services/ApiClient.php`) — Guzzle-based HTTP client with injectable client for tests. Methods: `search($index, $query, $perPage, $page)` returns `['results' => [...], 'totalResults' => int, 'took' => int]`; `getDocument($index, $id)` returns the `_source` document directly. Shared `pluginSetting(string $key, string $default)` helper consolidates the "read from plugin settings with test-context fallback" pattern so `resolveItemFields` and `resolveBaseUri` stay one-liners.
 - **`{% collectionDocument %}` Twig tag** (`src/web/twig/`) — parses to `{% collectionDocument 'index' id as doc %}`, calls `ApiClient::getDocument()` via a custom node, and assigns the result to the given variable name. Registered via `src/web/twig/Extension.php`.
-- **CP search panel** — registered CP nav item "Collections Proxy" → `/admin/collections-proxy`. Template at `src/templates/search.twig`, driven by a vanilla-JS asset bundle (`src/web/assets/SearchAsset.php`) that calls `SearchController::actionQuery` via `Craft.sendActionRequest`.
+- **CP nav item + subnav** — registers a "Collections Proxy" nav entry with two sub-pages: **Search** (a vanilla-JS test panel at `/admin/collections-proxy` that calls `SearchController::actionQuery` via `Craft.sendActionRequest`) and **Settings** (deep link into the standard plugin settings page). Template at `src/templates/search.twig`, asset bundle at `src/web/assets/SearchAsset.php`.
 - **`SearchController`** (`src/controllers/SearchController.php`) — AJAX endpoint behind the CP panel; reuses the `ApiClient` service.
 
 ## Architecture
