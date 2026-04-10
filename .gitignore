@@ -1,0 +1,11 @@
+# Composer
+/vendor/
+composer.phar
+
+# IDE
+.idea/
+.vscode/
+.DS_Store
+
+# Logs
+*.log

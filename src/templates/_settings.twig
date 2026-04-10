@@ -1,0 +1,67 @@
+{% import "_includes/forms" as forms %}
+
+{{ forms.autosuggestField({
+    label: "Server-side API URL"|t('collections-proxy'),
+    instructions: "Base URL used by the `{% collectionDocument %}` Twig tag and PHP `ApiClient` service. Safe to be an internal-only hostname.",
+    id: 'serverApiUrl',
+    name: 'serverApiUrl',
+    value: settings.serverApiUrl,
+    suggestEnvVars: true,
+    suggestAliases: true,
+    required: true,
+}) }}
+
+{{ forms.autosuggestField({
+    label: "Public API URL"|t('collections-proxy'),
+    instructions: "Base URL exposed to the browser for client-side Searchkit calls.",
+    id: 'publicApiUrl',
+    name: 'publicApiUrl',
+    value: settings.publicApiUrl,
+    suggestEnvVars: true,
+    suggestAliases: true,
+    required: true,
+}) }}
+
+{{ forms.autosuggestField({
+    label: "Default index"|t('collections-proxy'),
+    instructions: "Default index name (e.g. `famsf-artworks-develop`).",
+    id: 'index',
+    name: 'index',
+    value: settings.index,
+    suggestEnvVars: true,
+    required: true,
+}) }}
+
+<hr>
+
+{{ forms.textField({
+    label: "Title field"|t('collections-proxy'),
+    instructions: "Document field used as the item title (e.g. `title`).",
+    id: 'titleField',
+    name: 'titleField',
+    value: settings.titleField,
+}) }}
+
+{{ forms.textField({
+    label: "Search fields"|t('collections-proxy'),
+    instructions: "Comma-separated fields to search, wildcards allowed (e.g. `title,description*`).",
+    id: 'searchFields',
+    name: 'searchFields',
+    value: settings.searchFields,
+}) }}
+
+{{ forms.textField({
+    label: "Item fields"|t('collections-proxy'),
+    instructions: "Comma-separated fields returned for item/document pages. Leave empty for all.",
+    id: 'itemFields',
+    name: 'itemFields',
+    value: settings.itemFields,
+}) }}
+
+{{ forms.textField({
+    label: "Display fields"|t('collections-proxy'),
+    instructions: "Comma-separated fields returned for search results. Leave empty for all.",
+    id: 'displayFields',
+    name: 'displayFields',
+    value: settings.displayFields,
+}) }}

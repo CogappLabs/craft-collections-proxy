@@ -1,0 +1,51 @@
+{% extends "_layouts/cp" %}
+{% import "_includes/forms" as forms %}
+
+{% set title = "Collections Proxy — Search"|t('collections-proxy') %}
+
+{% set crumbs = [
+    { label: "Collections Proxy"|t('collections-proxy'), url: url('collections-proxy') },
+] %}
+
+{% do view.registerAssetBundle("cogapp\\collectionsproxy\\web\\assets\\SearchAsset") %}
+
+{% set settings = craft.app.plugins.getPlugin('collections-proxy').getSettings() %}
+
+{% block content %}
+    <div id="cp-search-wrapper" data-action-url="{{ actionUrl('collections-proxy/search/query') }}">
+
+        <form id="cp-search-form">
+            {{ forms.textField({
+                label: "Index"|t('collections-proxy'),
+                id: 'cp-search-index',
+                name: 'index',
+                value: settings.index,
+                required: true,
+            }) }}
+
+            {{ forms.textField({
+                label: "Query"|t('collections-proxy'),
+                id: 'cp-search-query',
+                name: 'q',
+                placeholder: 'Search…'|t('collections-proxy'),
+            }) }}
+
+            {{ forms.textField({
+                label: "Per page"|t('collections-proxy'),
+                id: 'cp-search-per-page',
+                name: 'perPage',
+                value: 20,
+                size: 5,
+            }) }}
+
+            <div class="buttons">
+                <button type="submit" class="btn submit">{{ "Search"|t('collections-proxy') }}</button>
+            </div>
+        </form>
+
+        <hr>
+
+        <p id="cp-search-summary" class="light"></p>
+        <div id="cp-search-results"></div>
+    </div>
+{% endblock %}
