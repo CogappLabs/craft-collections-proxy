@@ -73,15 +73,10 @@ class ApiClient extends Component
         if ($this->baseUri !== null) {
             return $this->baseUri;
         }
-        // In a test context, Plugin (and Yii) aren't loaded. Skip without autoloading.
-        if (!class_exists(Plugin::class, false)) {
+        $raw = $this->pluginSetting('serverApiUrl');
+        if ($raw === '') {
             return null;
         }
-        $plugin = Plugin::getInstance();
-        if (!$plugin) {
-            return null;
-        }
-        $raw = $plugin->getSettings()->serverApiUrl;
         if (!class_exists(\craft\helpers\App::class, false)) {
             return $raw;
         }
@@ -102,14 +97,25 @@ class ApiClient extends Component
 
     protected function resolveItemFields(): string
     {
-        if ($this->itemFields !== null) {
-            return $this->itemFields;
-        }
+        return $this->itemFields ?? $this->pluginSetting('itemFields');
+    }
+
+    /**
+     * Read a string property off the plugin's Settings model, returning
+     * $default when running outside a full Craft bootstrap (e.g. unit tests
+     * where Plugin::class isn't autoloaded).
+     */
+    private function pluginSetting(string $key, string $default = ''): string
+    {
         if (!class_exists(Plugin::class, false)) {
-            return '';
+            return $default;
         }
         $plugin = Plugin::getInstance();
-        return $plugin ? (string) $plugin->getSettings()->itemFields : '';
+        if ($plugin === null) {
+            return $default;
+        }
+        $value = $plugin->getSettings()->{$key} ?? $default;
+        return is_string($value) ? $value : $default;
     }
 
     protected function logError(string $message): void
