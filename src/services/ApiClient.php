@@ -11,10 +11,10 @@ use yii\base\Component;
  * Thin HTTP client for a read-only Collections API that speaks the
  * Elasticsearch/OpenSearch response shape:
  *
- *   GET /api/:index?q=&perPage=&page=&fields=
+ *   GET /api/v1/:index?q=&perPage=&page=&fields=
  *     → { hits: { hits: [{ _id, _source }], total: { value } }, took }
  *
- *   GET /api/:index/:id?fields=
+ *   GET /api/v1/:index/:id?fields=
  *     → the _source object directly
  *
  * Used by the Twig `{% collectionDocument %}` tag and available for
@@ -146,17 +146,18 @@ class ApiClient extends Component
         }
 
         try {
-            $response = $client->get("/api/{$index}/{$id}", ['query' => $queryParams]);
+            $response = $client->get("/api/v1/{$index}/{$id}", ['query' => $queryParams]);
             $source = json_decode($response->getBody()->getContents(), true);
             return is_array($source) ? $source : null;
         } catch (ClientException $e) {
-            if ($e->getResponse()->getStatusCode() === 404) {
+            $status = $e->getResponse()->getStatusCode();
+            if ($status === 404) {
                 return null;
             }
-            $this->logError('Collections API getDocument error: ' . $e->getMessage());
+            $this->logError("Collections API getDocument error (HTTP {$status}): " . $e->getMessage());
             return null;
         } catch (\Exception $e) {
-            $this->logError('Collections API getDocument error: ' . $e->getMessage());
+            $this->logError('Collections API getDocument error (code ' . $e->getCode() . '): ' . $e->getMessage());
             return null;
         }
     }
@@ -184,10 +185,14 @@ class ApiClient extends Component
         }
 
         try {
-            $response = $client->get("/api/{$index}", ['query' => $queryParams]);
+            $response = $client->get("/api/v1/{$index}", ['query' => $queryParams]);
             $body = json_decode($response->getBody()->getContents(), true) ?: [];
+        } catch (ClientException $e) {
+            $status = $e->getResponse()->getStatusCode();
+            $this->logError("Collections API search error (HTTP {$status}): " . $e->getMessage());
+            return ['results' => [], 'totalResults' => 0, 'took' => 0];
         } catch (\Exception $e) {
-            $this->logError('Collections API search error: ' . $e->getMessage());
+            $this->logError('Collections API search error (code ' . $e->getCode() . '): ' . $e->getMessage());
             return ['results' => [], 'totalResults' => 0, 'took' => 0];
         }
 

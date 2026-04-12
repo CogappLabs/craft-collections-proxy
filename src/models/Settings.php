@@ -47,6 +47,7 @@ class Settings extends Model
             [['serverApiUrl', 'publicApiUrl', 'index'], 'string'],
             [['titleField', 'itemFields'], 'string'],
             [['serverApiUrl', 'publicApiUrl', 'index'], 'required'],
+            [['serverApiUrl', 'publicApiUrl'], 'url', 'validSchemes' => ['http', 'https']],
         ];
     }
 }

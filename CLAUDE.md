@@ -97,8 +97,8 @@ php craft plugin/install collections-proxy
 
 The plugin assumes the backend speaks:
 
-- `GET /api/:index?q=&perPage=&page=&fields=` → `{ hits: { hits: [{ _id, _source }], total: { value } }, took }`
-- `GET /api/:index/:id?fields=` → the `_source` object directly
+- `GET /api/v1/:index?q=&perPage=&page=&fields=` → `{ hits: { hits: [{ _id, _source }], total: { value } }, took }`
+- `GET /api/v1/:index/:id?fields=` → the `_source` object directly
 
 All three sibling Collections API flavours conform to this shape.
 

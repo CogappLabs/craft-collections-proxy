@@ -74,7 +74,7 @@ class ApiClientTest extends TestCase
 
         /** @var Request $req */
         $req = $history[0]['request'];
-        self::assertSame('/api/my-index', $req->getUri()->getPath());
+        self::assertSame('/api/v1/my-index', $req->getUri()->getPath());
         $query = [];
         parse_str($req->getUri()->getQuery(), $query);
         self::assertSame('hello world', $query['q']);
@@ -133,7 +133,7 @@ class ApiClientTest extends TestCase
 
         /** @var Request $req */
         $req = $history[0]['request'];
-        self::assertSame('/api/my-index/abc', $req->getUri()->getPath());
+        self::assertSame('/api/v1/my-index/abc', $req->getUri()->getPath());
         $query = [];
         parse_str($req->getUri()->getQuery(), $query);
         self::assertSame('title,description', $query['fields']);
@@ -141,7 +141,7 @@ class ApiClientTest extends TestCase
 
     public function testGetDocumentReturnsNullOn404(): void
     {
-        $req = new Request('GET', '/api/x/missing');
+        $req = new Request('GET', '/api/v1/x/missing');
         $res = new Response(404);
         $client = $this->buildClient([new ClientException('Not Found', $req, $res)]);
 

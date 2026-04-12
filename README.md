@@ -63,7 +63,7 @@ Values in this file are merged with CP-saved settings; the file wins.
 The tag fetches via the plugin's `ApiClient`, which calls:
 
 ```
-GET {serverApiUrl}/api/{index}/{id}?fields={itemFields}
+GET {serverApiUrl}/api/v1/{index}/{id}?fields={itemFields}
 ```
 
 and expects the API to return the document `_source` as the body.
@@ -102,8 +102,8 @@ ddev exec bash -c "cd /var/www/craft-collections-proxy && composer phpstan"
 
 The plugin assumes the backend speaks:
 
-- `GET /api/:index?q=&perPage=&page=&fields=` → `{ hits: { hits: [{ _id, _source }], total: { value } }, took }`
-- `GET /api/:index/:id?fields=` → the `_source` object directly
+- `GET /api/v1/:index?q=&perPage=&page=&fields=` → `{ hits: { hits: [{ _id, _source }], total: { value } }, took }`
+- `GET /api/v1/:index/:id?fields=` → the `_source` object directly
 
 ## License
 

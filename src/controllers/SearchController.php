@@ -35,6 +35,10 @@ class SearchController extends Controller
             return $this->asJson(['error' => 'Plugin not available.']);
         }
 
+        if ($index !== '' && !preg_match('/^[a-zA-Z0-9._-]+$/', $index)) {
+            return $this->asJson(['error' => 'Invalid index name']);
+        }
+
         if ($index === '') {
             $index = $plugin->getSettings()->index;
         }

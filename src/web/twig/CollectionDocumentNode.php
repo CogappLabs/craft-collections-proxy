@@ -11,12 +11,13 @@ class CollectionDocumentNode extends Node
     {
         $compiler
             ->addDebugInfo($this)
+            ->write('$_plugin = \\cogapp\\collectionsproxy\\Plugin::getInstance();' . "\n")
             ->write('$context[')
             ->repr($this->getNode('target')->getAttribute('name'))
-            ->raw('] = \\cogapp\\collectionsproxy\\Plugin::getInstance()->apiClient->getDocument(')
+            ->raw('] = $_plugin !== null ? $_plugin->apiClient->getDocument(')
             ->subcompile($this->getNode('index'))
             ->raw(', ')
             ->subcompile($this->getNode('id'))
-            ->raw(");\n");
+            ->raw(") : null;\n");
     }
 }
