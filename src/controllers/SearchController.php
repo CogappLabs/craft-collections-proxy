@@ -36,6 +36,7 @@ class SearchController extends Controller
         }
 
         if ($index !== '' && !preg_match('/^[a-zA-Z0-9._-]+$/', $index)) {
+            $this->response->setStatusCode(400);
             return $this->asJson(['error' => 'Invalid index name']);
         }
 
