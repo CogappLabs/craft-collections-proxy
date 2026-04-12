@@ -1,0 +1,66 @@
+<div class="collection-search-widget" data-action-url="{{ actionUrl }}" data-index="{{ index }}">
+    <form class="collection-search-widget__form" style="display:flex;gap:0.5rem;margin-bottom:0.75rem;">
+        <div class="flex-grow">
+            <input type="text"
+                   class="text fullwidth collection-search-widget__input"
+                   placeholder="Search {{ index }}…"
+                   autocomplete="off">
+        </div>
+        <button type="submit" class="btn submit">Go</button>
+    </form>
+    <div class="collection-search-widget__summary light" style="font-size:0.85em;margin-bottom:0.5rem;"></div>
+    <div class="collection-search-widget__results" style="max-height:320px;overflow-y:auto;"></div>
+</div>
+
+<script>
+(function () {
+    var wrapper = document.querySelector('.collection-search-widget:last-of-type');
+    if (!wrapper) return;
+    var actionUrl = wrapper.getAttribute('data-action-url');
+    var index = wrapper.getAttribute('data-index');
+    var form = wrapper.querySelector('.collection-search-widget__form');
+    var input = wrapper.querySelector('.collection-search-widget__input');
+    var summary = wrapper.querySelector('.collection-search-widget__summary');
+    var results = wrapper.querySelector('.collection-search-widget__results');
+    var btn = form.querySelector('button');
+
+    form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        var q = input.value.trim();
+        if (!q) return;
+        btn.classList.add('loading');
+        summary.textContent = 'Searching\u2026';
+        results.innerHTML = '';
+
+        Craft.sendActionRequest('GET', actionUrl, { params: { index: index, q: q, perPage: 5 } })
+            .then(function (res) {
+                btn.classList.remove('loading');
+                var data = res.data || {};
+                var items = data.results || [];
+                var total = data.totalResults || 0;
+                var took = data.took || 0;
+                summary.textContent = total + ' result' + (total === 1 ? '' : 's') + ' (' + took + 'ms)';
+                if (!items.length) { results.innerHTML = '<p class="zilch">No results.</p>'; return; }
+                var html = '<ul style="list-style:none;margin:0;padding:0;">';
+                for (var i = 0; i < items.length; i++) {
+                    var s = items[i].source || {};
+                    var title = s.title || s.name || s.label || '(untitled)';
+                    var id = items[i].id;
+                    html += '<li style="padding:0.35rem 0;border-bottom:1px solid var(--gray-200);">'
+                        + '<a href="/item/' + Craft.escapeHtml(String(id)) + '" target="_blank" style="font-weight:500;">'
+                        + Craft.escapeHtml(title) + '</a>'
+                        + '<span class="light" style="margin-left:0.5rem;font-size:0.8em;">#' + Craft.escapeHtml(String(id)) + '</span>'
+                        + '</li>';
+                }
+                html += '</ul>';
+                results.innerHTML = html;
+            })
+            .catch(function (err) {
+                btn.classList.remove('loading');
+                var msg = (err && err.response && err.response.data && err.response.data.error) || 'Search failed.';
+                summary.textContent = '';
+                results.innerHTML = '<p class="error">' + Craft.escapeHtml(msg) + '</p>';
+            });
+    });
+})();
+</script>

@@ -1,0 +1,9 @@
+{% import "_includes/forms" as forms %}
+
+{{ forms.textField({
+    label: "Index"|t('collections-proxy'),
+    id: 'index',
+    name: 'index',
+    value: widget.index ?: defaultIndex,
+    instructions: "Leave blank to use the plugin default."|t('collections-proxy'),
+}) }}

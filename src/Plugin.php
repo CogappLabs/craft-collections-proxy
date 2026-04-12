@@ -8,10 +8,13 @@ use cogapp\collectionsproxy\services\ApiClient;
 use cogapp\collectionsproxy\web\twig\Extension as TwigExtension;
 use craft\base\Model;
 use craft\base\Plugin as BasePlugin;
+use craft\events\RegisterComponentTypesEvent;
 use craft\events\RegisterCpNavItemsEvent;
 use craft\events\RegisterUrlRulesEvent;
+use craft\services\Dashboard;
 use craft\web\UrlManager;
 use craft\web\twig\variables\Cp;
+use cogapp\collectionsproxy\widgets\SearchWidget;
 use yii\base\Event;
 
 /**
@@ -47,6 +50,7 @@ class Plugin extends BasePlugin
             $this->registerTwigExtension();
             $this->registerCpUrlRules();
             $this->registerCpNav();
+            $this->registerWidgets();
         });
     }
 
@@ -80,6 +84,17 @@ class Plugin extends BasePlugin
             function (RegisterUrlRulesEvent $event) {
                 $event->rules['collections-proxy'] = ['template' => 'collections-proxy/search'];
                 $event->rules['collections-proxy/search'] = ['template' => 'collections-proxy/search'];
+            },
+        );
+    }
+
+    private function registerWidgets(): void
+    {
+        Event::on(
+            Dashboard::class,
+            Dashboard::EVENT_REGISTER_WIDGET_TYPES,
+            function (RegisterComponentTypesEvent $event) {
+                $event->types[] = SearchWidget::class;
             },
         );
     }
