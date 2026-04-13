@@ -1,6 +1,7 @@
-<div id="{{ fieldId }}" class="search-link-field"
+<div class="search-link-field"
      data-action-url="{{ actionUrl }}"
-     data-index="{{ index }}">
+     data-index="{{ index }}"
+     data-field-handle="{{ field.handle }}">
 
     <input type="hidden" name="{{ field.handle }}[indexHandle]" value="{{ index }}" class="slf-index">
     <input type="hidden" name="{{ field.handle }}[documentId]" value="{{ documentId }}" class="slf-doc-id">
@@ -27,10 +28,14 @@
     </div>
 </div>
 
-<script>
+{% js %}
 (function () {
-    var wrapper = document.getElementById('{{ fieldId }}');
-    if (!wrapper) return;
+    // Find the wrapper by locating this field's unique handle attribute.
+    // This avoids ID-namespacing issues in Craft's field layout editor.
+    var wrappers = document.querySelectorAll('.search-link-field[data-field-handle="{{ field.handle }}"]');
+    var wrapper = wrappers[wrappers.length - 1];
+    if (!wrapper || wrapper.dataset.slfInit) return;
+    wrapper.dataset.slfInit = '1';
 
     var actionUrl = wrapper.getAttribute('data-action-url');
     var index = wrapper.getAttribute('data-index');
@@ -110,4 +115,4 @@
         if (e.key === 'Enter') { e.preventDefault(); doSearch(); }
     });
 })();
-</script>
+{% endjs %}
