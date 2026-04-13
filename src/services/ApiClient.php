@@ -163,6 +163,49 @@ class ApiClient extends Component
     }
 
     /**
+     * Fetch multiple documents by ID in a single request.
+     * Returns an array keyed by document ID => _source.
+     *
+     * @param string[] $ids
+     * @param string|null $fields Comma-separated field list (null = use itemFields setting)
+     * @return array<string, array<string, mixed>>
+     */
+    public function getDocuments(string $index, array $ids, ?string $fields = null): array
+    {
+        $client = $this->client();
+        if ($client === null || $ids === []) {
+            return [];
+        }
+
+        $body = ['ids' => $ids];
+        $resolvedFields = $fields ?? $this->resolveItemFields();
+        if ($resolvedFields !== '') {
+            $body['fields'] = $resolvedFields;
+        }
+
+        try {
+            $response = $client->post("/api/v1/{$index}/_mget", [
+                'json' => $body,
+            ]);
+            $data = json_decode($response->getBody()->getContents(), true);
+            if (!is_array($data) || !isset($data['docs'])) {
+                return [];
+            }
+
+            $result = [];
+            foreach ($data['docs'] as $doc) {
+                if (isset($doc['_id'], $doc['_source']) && is_array($doc['_source'])) {
+                    $result[(string) $doc['_id']] = $doc['_source'];
+                }
+            }
+            return $result;
+        } catch (\Exception $e) {
+            $this->logError('Collections API getDocuments error: ' . $e->getMessage());
+            return [];
+        }
+    }
+
+    /**
      * Search an index. Returns a normalised shape:
      *   ['results' => [...], 'totalResults' => int, 'took' => int]
      *
