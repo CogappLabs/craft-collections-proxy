@@ -18,6 +18,11 @@
         var summaryEl = document.getElementById('cp-search-summary');
         var submitBtn = form ? form.querySelector('button[type="submit"]') : null;
 
+        function proxyThumb(url) {
+            if (!url) return '';
+            return url.replace(/https?:\/\/famsf\.emuseum\.com\/apis\/iiif\/image\/v[23]\//, siteUrl + '/_iiif/');
+        }
+
         if (!form || !actionUrl) return;
 
         form.addEventListener('submit', function (e) {
@@ -79,6 +84,7 @@
             var titleField = detectTitleField(results[0].source || {});
 
             var html = '<table class="data fullwidth"><thead><tr>'
+                + '<th scope="col" style="width:50px"></th>'
                 + '<th scope="col">ID</th>'
                 + '<th scope="col">' + Craft.escapeHtml(titleField || 'Title') + '</th>'
                 + '</tr></thead><tbody>';
@@ -88,8 +94,14 @@
                 var id = row.id == null ? '' : String(row.id);
                 var source = row.source || {};
                 var title = titleField && source[titleField] != null ? String(source[titleField]) : '';
+                var thumb = source.iiif_thumbnail_url || '';
                 var itemUrl = siteUrl ? siteUrl + '/item/' + encodeURIComponent(id) : '';
+                var proxiedThumb = proxyThumb(thumb);
+                var thumbHtml = proxiedThumb
+                    ? '<img src="' + Craft.escapeHtml(proxiedThumb) + '" alt="" style="width:40px; height:40px; object-fit:cover; border-radius:3px;">'
+                    : '<div style="width:40px; height:40px; background:var(--gray-100); border-radius:3px;"></div>';
                 html += '<tr>'
+                    + '<td>' + thumbHtml + '</td>'
                     + '<td><code>' + Craft.escapeHtml(id) + '</code></td>'
                     + '<td>' + (itemUrl
                         ? '<a href="' + Craft.escapeHtml(itemUrl) + '" target="_blank">' + Craft.escapeHtml(title) + '</a>'

@@ -24,6 +24,11 @@
     var results = wrapper.querySelector('.collection-search-widget__results');
     var btn = form.querySelector('button');
 
+    function proxyThumb(url) {
+        if (!url) return '';
+        return url.replace(/https?:\/\/famsf\.emuseum\.com\/apis\/iiif\/image\/v[23]\//, '/_iiif/');
+    }
+
     form.addEventListener('submit', function (e) {
         e.preventDefault();
         var q = input.value.trim();
@@ -46,10 +51,18 @@
                     var s = items[i].source || {};
                     var title = s.title || s.name || s.label || '(untitled)';
                     var id = items[i].id;
-                    html += '<li style="padding:0.35rem 0;border-bottom:1px solid var(--gray-200);">'
+                    var thumb = s.iiif_thumbnail_url || '';
+                    var proxiedThumb = proxyThumb(thumb);
+                    var thumbHtml = proxiedThumb
+                        ? '<img src="' + Craft.escapeHtml(proxiedThumb) + '" alt="" style="width:32px;height:32px;object-fit:cover;border-radius:3px;flex-shrink:0;">'
+                        : '<div style="width:32px;height:32px;background:var(--gray-100);border-radius:3px;flex-shrink:0;"></div>';
+                    html += '<li style="padding:0.35rem 0;border-bottom:1px solid var(--gray-200);display:flex;align-items:center;gap:0.5rem;">'
+                        + thumbHtml
+                        + '<div style="min-width:0;flex-grow:1;">'
                         + '<a href="/item/' + Craft.escapeHtml(String(id)) + '" target="_blank" style="font-weight:500;">'
                         + Craft.escapeHtml(title) + '</a>'
                         + '<span class="light" style="margin-left:0.5rem;font-size:0.8em;">#' + Craft.escapeHtml(String(id)) + '</span>'
+                        + '</div>'
                         + '</li>';
                 }
                 html += '</ul>';
