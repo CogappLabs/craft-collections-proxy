@@ -12,7 +12,7 @@
 {% set settings = craft.app.plugins.getPlugin('collections-proxy').getSettings() %}
 
 {% block content %}
-    <div id="cp-search-wrapper" data-action-url="{{ actionUrl('collections-proxy/search/query') }}">
+    <div id="cp-search-wrapper" data-action-url="{{ actionUrl('collections-proxy/search/query') }}" data-site-url="{{ siteUrl }}">
 
         <form id="cp-search-form">
             {{ forms.textField({

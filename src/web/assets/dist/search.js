@@ -9,6 +9,7 @@
         if (!wrapper) return;
 
         var actionUrl = wrapper.getAttribute('data-action-url');
+        var siteUrl = (wrapper.getAttribute('data-site-url') || '').replace(/\/+$/, '');
         var form = document.getElementById('cp-search-form');
         var indexInput = document.getElementById('cp-search-index');
         var queryInput = document.getElementById('cp-search-query');
@@ -87,9 +88,13 @@
                 var id = row.id == null ? '' : String(row.id);
                 var source = row.source || {};
                 var title = titleField && source[titleField] != null ? String(source[titleField]) : '';
+                var itemUrl = siteUrl ? siteUrl + '/item/' + encodeURIComponent(id) : '';
                 html += '<tr>'
                     + '<td><code>' + Craft.escapeHtml(id) + '</code></td>'
-                    + '<td>' + Craft.escapeHtml(title) + '</td>'
+                    + '<td>' + (itemUrl
+                        ? '<a href="' + Craft.escapeHtml(itemUrl) + '" target="_blank">' + Craft.escapeHtml(title) + '</a>'
+                        : Craft.escapeHtml(title))
+                    + '</td>'
                     + '</tr>';
             }
 
