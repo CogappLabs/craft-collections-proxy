@@ -78,6 +78,31 @@
         queryInput.value = '';
     }
 
+    // Fetch thumbnail for already-saved document on page load
+    if (docIdInput.value) {
+        Craft.sendActionRequest('GET', actionUrl, { params: { index: index, q: docIdInput.value, perPage: 5 } })
+            .then(function (res) {
+                var items = (res.data && res.data.results) || [];
+                var docId = docIdInput.value;
+                for (var i = 0; i < items.length; i++) {
+                    if (String(items[i].id) === docId) {
+                        var thumb = (items[i].source || {}).iiif_thumbnail_url || '';
+                        if (thumb) {
+                            selectedImg.src = proxyThumb(thumb);
+                            selectedImg.alt = docTitleInput.value;
+                            selectedThumb.style.display = '';
+                        } else {
+                            selectedThumb.style.display = 'none';
+                        }
+                        return;
+                    }
+                }
+                // ID not in search results — hide thumb placeholder
+                selectedThumb.style.display = 'none';
+            })
+            .catch(function () { selectedThumb.style.display = 'none'; });
+    }
+
     clearBtn.addEventListener('click', function () {
         docIdInput.value = '';
         docTitleInput.value = '';
