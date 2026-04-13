@@ -1,0 +1,117 @@
+<div id="{{ fieldId }}" class="search-link-field"
+     data-action-url="{{ actionUrl }}"
+     data-index="{{ index }}"
+     data-site-url="{{ siteUrl }}"
+     data-url-template="{{ urlTemplate }}">
+
+    <input type="hidden" name="{{ field.handle }}[documentId]" value="{{ documentId }}" class="slf-doc-id">
+    <input type="hidden" name="{{ field.handle }}[documentTitle]" value="{{ documentTitle }}" class="slf-doc-title">
+
+    {# Selected document display #}
+    <div class="slf-selected" style="{% if not documentId %}display:none{% endif %}; margin-bottom: 0.75rem;">
+        <div style="display:flex; align-items:center; gap:0.5rem; padding:0.5rem; background:var(--gray-050); border-radius:4px;">
+            <span class="slf-selected-title" style="font-weight:500; flex-grow:1;">{{ documentTitle }}</span>
+            <a href="{{ siteUrl ~ urlTemplate|replace({'{id}': documentId}) }}" target="_blank" class="slf-selected-link btn small" {% if not documentId %}style="display:none"{% endif %}>View</a>
+            <button type="button" class="btn small slf-clear">Clear</button>
+        </div>
+    </div>
+
+    {# Search input #}
+    <div class="slf-search" style="{% if documentId %}display:none{% endif %}">
+        <div style="display:flex; gap:0.5rem; margin-bottom:0.5rem;">
+            <div class="flex-grow">
+                <input type="text" class="text fullwidth slf-query" placeholder="Search {{ index }}…" autocomplete="off">
+            </div>
+            <button type="button" class="btn submit slf-go">Search</button>
+        </div>
+        <div class="slf-results" style="max-height:250px; overflow-y:auto;"></div>
+    </div>
+</div>
+
+<script>
+(function () {
+    var wrapper = document.getElementById('{{ fieldId }}');
+    if (!wrapper) return;
+
+    var actionUrl = wrapper.getAttribute('data-action-url');
+    var index = wrapper.getAttribute('data-index');
+    var siteUrl = wrapper.getAttribute('data-site-url');
+    var urlTemplate = wrapper.getAttribute('data-url-template');
+    var docIdInput = wrapper.querySelector('.slf-doc-id');
+    var docTitleInput = wrapper.querySelector('.slf-doc-title');
+    var selectedEl = wrapper.querySelector('.slf-selected');
+    var selectedTitle = wrapper.querySelector('.slf-selected-title');
+    var selectedLink = wrapper.querySelector('.slf-selected-link');
+    var searchEl = wrapper.querySelector('.slf-search');
+    var queryInput = wrapper.querySelector('.slf-query');
+    var goBtn = wrapper.querySelector('.slf-go');
+    var resultsEl = wrapper.querySelector('.slf-results');
+    var clearBtn = wrapper.querySelector('.slf-clear');
+
+    function selectDoc(id, title) {
+        docIdInput.value = id;
+        docTitleInput.value = title;
+        selectedTitle.textContent = title;
+        selectedLink.href = siteUrl + urlTemplate.replace('{id}', id);
+        selectedLink.style.display = '';
+        selectedEl.style.display = '';
+        searchEl.style.display = 'none';
+        resultsEl.innerHTML = '';
+        queryInput.value = '';
+    }
+
+    clearBtn.addEventListener('click', function () {
+        docIdInput.value = '';
+        docTitleInput.value = '';
+        selectedEl.style.display = 'none';
+        searchEl.style.display = '';
+        queryInput.focus();
+    });
+
+    function doSearch() {
+        var q = queryInput.value.trim();
+        if (!q) return;
+        goBtn.classList.add('loading');
+        resultsEl.innerHTML = '';
+
+        Craft.sendActionRequest('GET', actionUrl, { params: { index: index, q: q, perPage: 8 } })
+            .then(function (res) {
+                goBtn.classList.remove('loading');
+                var items = (res.data && res.data.results) || [];
+                if (!items.length) {
+                    resultsEl.innerHTML = '<p class="zilch">No results.</p>';
+                    return;
+                }
+                var html = '<ul style="list-style:none; margin:0; padding:0;">';
+                for (var i = 0; i < items.length; i++) {
+                    var s = items[i].source || {};
+                    var title = s.title || s.name || '(untitled)';
+                    var id = items[i].id;
+                    html += '<li style="padding:0.4rem 0; border-bottom:1px solid var(--gray-200); cursor:pointer;" '
+                        + 'data-id="' + Craft.escapeHtml(String(id)) + '" '
+                        + 'data-title="' + Craft.escapeHtml(title) + '">'
+                        + '<span style="font-weight:500;">' + Craft.escapeHtml(title) + '</span> '
+                        + '<span class="light" style="font-size:0.8em;">#' + Craft.escapeHtml(String(id)) + '</span>'
+                        + '</li>';
+                }
+                html += '</ul>';
+                resultsEl.innerHTML = html;
+
+                resultsEl.querySelectorAll('li').forEach(function (li) {
+                    li.addEventListener('click', function () {
+                        selectDoc(this.getAttribute('data-id'), this.getAttribute('data-title'));
+                    });
+                });
+            })
+            .catch(function (err) {
+                goBtn.classList.remove('loading');
+                resultsEl.innerHTML = '<p class="error">Search failed.</p>';
+            });
+    }
+
+    goBtn.addEventListener('click', doSearch);
+    queryInput.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') { e.preventDefault(); doSearch(); }
+    });
+})();
+</script>

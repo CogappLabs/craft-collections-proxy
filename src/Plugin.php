@@ -12,8 +12,10 @@ use craft\events\RegisterComponentTypesEvent;
 use craft\events\RegisterCpNavItemsEvent;
 use craft\events\RegisterUrlRulesEvent;
 use craft\services\Dashboard;
+use craft\services\Fields;
 use craft\web\UrlManager;
 use craft\web\twig\variables\Cp;
+use cogapp\collectionsproxy\fields\SearchLinkField;
 use cogapp\collectionsproxy\widgets\SearchWidget;
 use yii\base\Event;
 
@@ -51,6 +53,7 @@ class Plugin extends BasePlugin
             $this->registerCpUrlRules();
             $this->registerCpNav();
             $this->registerWidgets();
+            $this->registerFieldTypes();
         });
     }
 
@@ -84,6 +87,17 @@ class Plugin extends BasePlugin
             function (RegisterUrlRulesEvent $event) {
                 $event->rules['collections-proxy'] = ['template' => 'collections-proxy/search'];
                 $event->rules['collections-proxy/search'] = ['template' => 'collections-proxy/search'];
+            },
+        );
+    }
+
+    private function registerFieldTypes(): void
+    {
+        Event::on(
+            Fields::class,
+            Fields::EVENT_REGISTER_FIELD_TYPES,
+            function (RegisterComponentTypesEvent $event) {
+                $event->types[] = SearchLinkField::class;
             },
         );
     }

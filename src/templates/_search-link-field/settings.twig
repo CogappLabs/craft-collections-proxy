@@ -1,0 +1,17 @@
+{% import "_includes/forms" as forms %}
+
+{{ forms.textField({
+    label: "Index"|t('collections-proxy'),
+    instructions: "The search index handle. Leave blank to use the plugin default. Supports environment variables."|t('collections-proxy'),
+    id: 'index',
+    name: 'index',
+    value: field.index ?: defaultIndex,
+}) }}
+
+{{ forms.textField({
+    label: "URL template"|t('collections-proxy'),
+    instructions: "Frontend URL pattern. Use {id} as the document ID placeholder."|t('collections-proxy'),
+    id: 'urlTemplate',
+    name: 'urlTemplate',
+    value: field.urlTemplate ?: '/item/{id}',
+}) }}
