@@ -9,7 +9,9 @@ Designed to sit in front of any of the [FAMSF Collections API](https://github.co
 - **`{% collectionDocument %}` Twig tag** for server-side document fetching on item pages.
 - **PHP service** for programmatic use elsewhere in your Craft codebase.
 - **Native plugin settings** (env-var aware via Craft's `EnvAttributeParserBehavior`) stored under `Settings → Plugins → Collections Proxy`.
-- **CP search panel** for testing queries against the configured API from inside the control panel.
+- **CP search panel** for testing queries against the configured API from inside the control panel. Results link to the frontend item page.
+- **SearchLinkField** — a custom field type that lets editors search the Collections API and store a link to a collection document (index handle + document ID + title). Configurable index in field settings; vanilla JS, no Sprig.
+- **Dashboard widget** — a "Collection Search" CP dashboard widget with a compact search box, results with links to item pages.
 
 ## Install
 

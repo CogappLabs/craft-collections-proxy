@@ -29,7 +29,10 @@ All three speak identical endpoints, so the backend can be swapped by changing t
 - **`ApiClient` service** (`src/services/ApiClient.php`) — Guzzle-based HTTP client with injectable client for tests. Methods: `search($index, $query, $perPage, $page)` returns `['results' => [...], 'totalResults' => int, 'took' => int]`; `getDocument($index, $id)` returns the `_source` document directly. Shared `pluginSetting(string $key, string $default)` helper consolidates the "read from plugin settings with test-context fallback" pattern so `resolveItemFields` and `resolveBaseUri` stay one-liners.
 - **`{% collectionDocument %}` Twig tag** (`src/web/twig/`) — parses to `{% collectionDocument 'index' id as doc %}`, calls `ApiClient::getDocument()` via a custom node, and assigns the result to the given variable name. Registered via `src/web/twig/Extension.php`.
 - **CP nav item + subnav** — registers a "Collections Proxy" nav entry with two sub-pages: **Search** (a vanilla-JS test panel at `/admin/collections-proxy` that calls `SearchController::actionQuery` via `Craft.sendActionRequest`) and **Settings** (deep link into the standard plugin settings page). Template at `src/templates/search.twig`, asset bundle at `src/web/assets/SearchAsset.php`.
-- **`SearchController`** (`src/controllers/SearchController.php`) — AJAX endpoint behind the CP panel; reuses the `ApiClient` service.
+- **`SearchController`** (`src/controllers/SearchController.php`) — AJAX endpoint behind the CP panel; reuses the `ApiClient` service. Shared by the CP search page, the dashboard widget, and the SearchLinkField.
+- **`SearchLinkField`** (`src/fields/SearchLinkField.php`) — A custom field type that lets editors search the Collections API and store a link to a collection document (stores `indexHandle`, `documentId`, and `documentTitle`). The index is configurable in field settings. Uses vanilla JS (no Sprig) and shares the `SearchController` action with the CP search page and widget.
+- **Dashboard widget** (`src/widgets/SearchWidget.php`) — A "Collection Search" CP dashboard widget. Compact search box that queries the API and shows results with links to item pages.
+- **CP search results link to frontend** — Results in the CP search panel (`src/web/assets/dist/search.js`) link to the frontend item page rather than staying within the CP.
 
 ## Architecture
 
