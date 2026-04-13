@@ -61,6 +61,24 @@ class SearchLinkField extends Field
         ]);
     }
 
+    /**
+     * Resolve the active index — from the field setting, falling back
+     * to the plugin's global index setting.
+     */
+    private function resolveIndex(): string
+    {
+        $parsed = App::parseEnv($this->index);
+        if (is_string($parsed) && $parsed !== '') {
+            return $parsed;
+        }
+        $plugin = Plugin::getInstance();
+        if ($plugin === null) {
+            return '';
+        }
+        $fromSettings = App::parseEnv($plugin->getSettings()->index);
+        return is_string($fromSettings) ? $fromSettings : '';
+    }
+
     /** @inheritdoc */
     public function normalizeValue(mixed $value, ?ElementInterface $element = null): mixed
     {
@@ -68,7 +86,7 @@ class SearchLinkField extends Field
             $docId = $value['documentId'] ?? '';
             if ($docId !== '') {
                 return [
-                    'indexHandle' => $value['indexHandle'] ?? App::parseEnv($this->index) ?? '',
+                    'indexHandle' => $this->resolveIndex(),
                     'documentId' => $docId,
                     'documentTitle' => $value['documentTitle'] ?? '',
                 ];
@@ -83,7 +101,6 @@ class SearchLinkField extends Field
     {
         if (is_array($value)) {
             return [
-                'indexHandle' => $value['indexHandle'] ?? '',
                 'documentId' => $value['documentId'] ?? '',
                 'documentTitle' => $value['documentTitle'] ?? '',
             ];
@@ -103,11 +120,7 @@ class SearchLinkField extends Field
             $documentTitle = $value['documentTitle'] ?? '';
         }
 
-        $index = App::parseEnv($this->index);
-        if ($index === '' || $index === null) {
-            $plugin = Plugin::getInstance();
-            $index = $plugin ? App::parseEnv($plugin->getSettings()->index) : '';
-        }
+        $index = $this->resolveIndex();
 
         $fieldId = Html::id($this->handle ?? 'search-link') . '-' . ($element->id ?? 'new');
 
