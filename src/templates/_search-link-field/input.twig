@@ -1,9 +1,8 @@
 <div id="{{ fieldId }}" class="search-link-field"
      data-action-url="{{ actionUrl }}"
-     data-index="{{ index }}"
-     data-site-url="{{ siteUrl }}"
-     data-url-template="{{ urlTemplate }}">
+     data-index="{{ index }}">
 
+    <input type="hidden" name="{{ field.handle }}[indexHandle]" value="{{ index }}" class="slf-index">
     <input type="hidden" name="{{ field.handle }}[documentId]" value="{{ documentId }}" class="slf-doc-id">
     <input type="hidden" name="{{ field.handle }}[documentTitle]" value="{{ documentTitle }}" class="slf-doc-title">
 
@@ -11,7 +10,7 @@
     <div class="slf-selected" style="{% if not documentId %}display:none{% endif %}; margin-bottom: 0.75rem;">
         <div style="display:flex; align-items:center; gap:0.5rem; padding:0.5rem; background:var(--gray-050); border-radius:4px;">
             <span class="slf-selected-title" style="font-weight:500; flex-grow:1;">{{ documentTitle }}</span>
-            <a href="{{ siteUrl ~ urlTemplate|replace({'{id}': documentId}) }}" target="_blank" class="slf-selected-link btn small" {% if not documentId %}style="display:none"{% endif %}>View</a>
+            <span class="light slf-selected-id" style="font-size:0.8em;">#{{ documentId }}</span>
             <button type="button" class="btn small slf-clear">Clear</button>
         </div>
     </div>
@@ -35,13 +34,11 @@
 
     var actionUrl = wrapper.getAttribute('data-action-url');
     var index = wrapper.getAttribute('data-index');
-    var siteUrl = wrapper.getAttribute('data-site-url');
-    var urlTemplate = wrapper.getAttribute('data-url-template');
     var docIdInput = wrapper.querySelector('.slf-doc-id');
     var docTitleInput = wrapper.querySelector('.slf-doc-title');
     var selectedEl = wrapper.querySelector('.slf-selected');
     var selectedTitle = wrapper.querySelector('.slf-selected-title');
-    var selectedLink = wrapper.querySelector('.slf-selected-link');
+    var selectedId = wrapper.querySelector('.slf-selected-id');
     var searchEl = wrapper.querySelector('.slf-search');
     var queryInput = wrapper.querySelector('.slf-query');
     var goBtn = wrapper.querySelector('.slf-go');
@@ -52,8 +49,7 @@
         docIdInput.value = id;
         docTitleInput.value = title;
         selectedTitle.textContent = title;
-        selectedLink.href = siteUrl + urlTemplate.replace('{id}', id);
-        selectedLink.style.display = '';
+        selectedId.textContent = '#' + id;
         selectedEl.style.display = '';
         searchEl.style.display = 'none';
         resultsEl.innerHTML = '';
@@ -103,7 +99,7 @@
                     });
                 });
             })
-            .catch(function (err) {
+            .catch(function () {
                 goBtn.classList.remove('loading');
                 resultsEl.innerHTML = '<p class="error">Search failed.</p>';
             });

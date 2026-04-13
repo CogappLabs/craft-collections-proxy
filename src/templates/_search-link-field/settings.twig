@@ -7,11 +7,3 @@
     name: 'index',
     value: field.index ?: defaultIndex,
 }) }}
-
-{{ forms.textField({
-    label: "URL template"|t('collections-proxy'),
-    instructions: "Frontend URL pattern. Use {id} as the document ID placeholder."|t('collections-proxy'),
-    id: 'urlTemplate',
-    name: 'urlTemplate',
-    value: field.urlTemplate ?: '/item/{id}',
-}) }}

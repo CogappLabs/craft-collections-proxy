@@ -20,9 +20,6 @@ class SearchLinkField extends Field
     /** The search index to search within (env-var aware). */
     public string $index = '';
 
-    /** URL template for the frontend link. Use {id} as the document ID placeholder. */
-    public string $urlTemplate = '/item/{id}';
-
     public static function displayName(): string
     {
         return 'Collection Search Link';
@@ -37,6 +34,7 @@ class SearchLinkField extends Field
     public static function dbType(): array
     {
         return [
+            'indexHandle' => Schema::TYPE_STRING,
             'documentId' => Schema::TYPE_STRING,
             'documentTitle' => Schema::TYPE_STRING,
         ];
@@ -46,7 +44,7 @@ class SearchLinkField extends Field
     protected function defineRules(): array
     {
         $rules = parent::defineRules();
-        $rules[] = [['index', 'urlTemplate'], 'string'];
+        $rules[] = [['index'], 'string'];
         return $rules;
     }
 
@@ -68,12 +66,11 @@ class SearchLinkField extends Field
     {
         if (is_array($value)) {
             $docId = $value['documentId'] ?? '';
-            $title = $value['documentTitle'] ?? '';
             if ($docId !== '') {
                 return [
+                    'indexHandle' => $value['indexHandle'] ?? App::parseEnv($this->index) ?? '',
                     'documentId' => $docId,
-                    'documentTitle' => $title,
-                    'url' => str_replace('{id}', $docId, $this->urlTemplate),
+                    'documentTitle' => $value['documentTitle'] ?? '',
                 ];
             }
         }
@@ -86,6 +83,7 @@ class SearchLinkField extends Field
     {
         if (is_array($value)) {
             return [
+                'indexHandle' => $value['indexHandle'] ?? '',
                 'documentId' => $value['documentId'] ?? '',
                 'documentTitle' => $value['documentTitle'] ?? '',
             ];
@@ -122,8 +120,6 @@ class SearchLinkField extends Field
             'documentId' => $documentId,
             'documentTitle' => $documentTitle,
             'actionUrl' => \craft\helpers\UrlHelper::actionUrl('collections-proxy/search/query'),
-            'siteUrl' => rtrim((string) \craft\helpers\UrlHelper::siteUrl(), '/'),
-            'urlTemplate' => $this->urlTemplate,
         ]);
     }
 }
