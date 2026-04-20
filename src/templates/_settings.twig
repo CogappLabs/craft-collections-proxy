@@ -2,7 +2,7 @@
 
 {{ forms.autosuggestField({
     label: "Server-side API URL"|t('collections-proxy'),
-    instructions: "Base URL used by the `{% collectionDocument %}` Twig tag and PHP `ApiClient` service. Safe to be an internal-only hostname.",
+    instructions: "Base URL used by the `{% collectionDocument %}`, `{% collectionDocuments %}`, and `{% collectionSearch %}` Twig tags. Safe to be an internal-only hostname.",
     id: 'serverApiUrl',
     name: 'serverApiUrl',
     value: settings.serverApiUrl,
@@ -13,7 +13,7 @@
 
 {{ forms.autosuggestField({
     label: "Public API URL"|t('collections-proxy'),
-    instructions: "Base URL exposed to the browser for client-side Searchkit calls.",
+    instructions: "Base URL exposed to the browser for client-side search calls.",
     id: 'publicApiUrl',
     name: 'publicApiUrl',
     value: settings.publicApiUrl,
@@ -32,20 +32,6 @@
     required: true,
 }) }}
 
-<hr>
-
-{{ forms.textField({
-    label: "Title field"|t('collections-proxy'),
-    instructions: "Document field used as the item page heading (e.g. `title`). Searchkit's own `search_attributes` are configured client-side.",
-    id: 'titleField',
-    name: 'titleField',
-    value: settings.titleField,
-}) }}
-
-{{ forms.textField({
-    label: "Item fields"|t('collections-proxy'),
-    instructions: "Comma-separated fields returned by the `{% collectionDocument %}` Twig tag on item pages. Passed to the API's `?fields=` param. Leave empty for all.",
-    id: 'itemFields',
-    name: 'itemFields',
-    value: settings.itemFields,
-}) }}
+<p class="light" style="margin-top: 1rem;">
+    {{ "`titleField` and `itemFields` are read from `config/collections-proxy.php` (or the equivalent env vars) — they're developer config, not site-admin settings, so they're not editable here."|t('collections-proxy')|md }}
+</p>

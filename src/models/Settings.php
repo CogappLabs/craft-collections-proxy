@@ -8,22 +8,27 @@ use craft\behaviors\EnvAttributeParserBehavior;
 /**
  * Plugin settings. All URL / index fields support environment variables
  * via Craft's standard $VAR syntax (handled by EnvAttributeParserBehavior).
+ *
+ * `serverApiUrl`, `publicApiUrl`, and `index` are editable in the CP
+ * (Settings → Plugins → Collections Proxy). `titleField` and `itemFields`
+ * are developer config and are expected to come from
+ * `config/collections-proxy.php` or env vars.
  */
 class Settings extends Model
 {
-    /** Server-side API URL (used by the Twig tag for item pages). */
+    /** Server-side API URL (used by the Twig tags). */
     public string $serverApiUrl = '';
 
-    /** Public API URL (exposed to the browser for client-side Searchkit). */
+    /** Public API URL (exposed to the browser for client-side search). */
     public string $publicApiUrl = '';
 
     /** Default index name. */
     public string $index = '';
 
-    /** Field used as the item title on item pages and in the search UI. */
+    /** Field used as the item title. Set via config file, not the CP. */
     public string $titleField = 'title';
 
-    /** Comma-separated fields returned for item/document pages. Empty = all. */
+    /** Comma-separated fields returned for item/document pages. Set via config file. Empty = all. */
     public string $itemFields = '';
 
     public function behaviors(): array
@@ -44,10 +49,8 @@ class Settings extends Model
     public function defineRules(): array
     {
         return [
-            [['serverApiUrl', 'publicApiUrl', 'index'], 'string'],
-            [['titleField', 'itemFields'], 'string'],
+            [['serverApiUrl', 'publicApiUrl', 'index', 'titleField', 'itemFields'], 'string'],
             [['serverApiUrl', 'publicApiUrl', 'index'], 'required'],
-            [['serverApiUrl', 'publicApiUrl'], 'string'],
         ];
     }
 }

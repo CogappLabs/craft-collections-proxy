@@ -10,6 +10,8 @@ class Extension extends AbstractExtension
     {
         return [
             new CollectionDocumentTokenParser(),
+            new CollectionDocumentsTokenParser(),
+            new CollectionSearchTokenParser(),
         ];
     }
 }

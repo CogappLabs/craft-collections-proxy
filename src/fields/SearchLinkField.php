@@ -6,14 +6,13 @@ use cogapp\collectionsproxy\Plugin;
 use Craft;
 use craft\base\ElementInterface;
 use craft\base\Field;
-use craft\helpers\App;
 use craft\helpers\Html;
 use yii\db\Schema;
 
 /**
  * A field type that lets editors search the Collections API and store
- * a link to a document. Uses vanilla JS — no Sprig/htmx dependency.
- * Shares the same SearchController action as the CP search page and widget.
+ * a link to a document (id + title + thumbnail URL). Uses vanilla JS —
+ * no Sprig/htmx dependency.
  */
 class SearchLinkField extends Field
 {
@@ -34,9 +33,9 @@ class SearchLinkField extends Field
     public static function dbType(): array
     {
         return [
-            'indexHandle' => Schema::TYPE_STRING,
             'documentId' => Schema::TYPE_STRING,
             'documentTitle' => Schema::TYPE_STRING,
+            'documentThumbnail' => Schema::TYPE_TEXT,
         ];
     }
 
@@ -63,34 +62,31 @@ class SearchLinkField extends Field
 
     /**
      * Resolve the active index — from the field setting, falling back
-     * to the plugin's global index setting.
+     * to the plugin's global index setting. Both are already env-parsed
+     * by EnvAttributeParserBehavior on the settings model, so this just
+     * picks whichever is non-empty.
      */
     private function resolveIndex(): string
     {
-        $parsed = App::parseEnv($this->index);
-        if (is_string($parsed) && $parsed !== '') {
-            return $parsed;
+        if ($this->index !== '') {
+            return $this->index;
         }
-        $plugin = Plugin::getInstance();
-        if ($plugin === null) {
-            return '';
-        }
-        $fromSettings = App::parseEnv($plugin->getSettings()->index);
-        return is_string($fromSettings) ? $fromSettings : '';
+        return Plugin::getInstance()?->getSettings()->index ?? '';
     }
 
     /** @inheritdoc */
     public function normalizeValue(mixed $value, ?ElementInterface $element = null): mixed
     {
         if (is_array($value)) {
-            $docId = $value['documentId'] ?? '';
-            if ($docId !== '') {
-                return [
-                    'indexHandle' => $this->resolveIndex(),
-                    'documentId' => $docId,
-                    'documentTitle' => $value['documentTitle'] ?? '',
-                ];
+            $documentId = (string) ($value['documentId'] ?? '');
+            if ($documentId === '') {
+                return null;
             }
+            return [
+                'documentId' => $documentId,
+                'documentTitle' => (string) ($value['documentTitle'] ?? ''),
+                'documentThumbnail' => (string) ($value['documentThumbnail'] ?? ''),
+            ];
         }
 
         return $value;
@@ -103,6 +99,7 @@ class SearchLinkField extends Field
             return [
                 'documentId' => $value['documentId'] ?? '',
                 'documentTitle' => $value['documentTitle'] ?? '',
+                'documentThumbnail' => $value['documentThumbnail'] ?? '',
             ];
         }
 
@@ -114,10 +111,12 @@ class SearchLinkField extends Field
     {
         $documentId = '';
         $documentTitle = '';
+        $documentThumbnail = '';
 
         if (is_array($value)) {
             $documentId = $value['documentId'] ?? '';
             $documentTitle = $value['documentTitle'] ?? '';
+            $documentThumbnail = $value['documentThumbnail'] ?? '';
         }
 
         $index = $this->resolveIndex();
@@ -132,6 +131,7 @@ class SearchLinkField extends Field
             'index' => $index,
             'documentId' => $documentId,
             'documentTitle' => $documentTitle,
+            'documentThumbnail' => $documentThumbnail,
             'actionUrl' => \craft\helpers\UrlHelper::actionUrl('collections-proxy/search/query'),
         ]);
     }

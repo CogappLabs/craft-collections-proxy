@@ -57,34 +57,4 @@ class SearchController extends Controller
 
         return $this->asJson($result);
     }
-
-    /**
-     * Fetch a single document by index and ID. Returns the _source directly.
-     */
-    public function actionGetDocument(): Response
-    {
-        $this->requirePermission('accessCp');
-
-        /** @var \craft\web\Request $request */
-        $request = Craft::$app->getRequest();
-        $index = (string) $request->getQueryParam('index', '');
-        $id = (string) $request->getQueryParam('id', '');
-
-        $plugin = Plugin::getInstance();
-        if ($plugin === null) {
-            return $this->asJson(['error' => 'Plugin not available.']);
-        }
-
-        if ($index === '') {
-            $index = $plugin->getSettings()->index;
-        }
-
-        if ($index === '' || $id === '') {
-            return $this->asJson(null);
-        }
-
-        $doc = $plugin->apiClient->getDocument($index, $id);
-
-        return $this->asJson($doc);
-    }
 }

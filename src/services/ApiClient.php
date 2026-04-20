@@ -20,9 +20,9 @@ use yii\base\Component;
  * Used by the Twig `{% collectionDocument %}` tag and available for
  * programmatic use via Plugin::getInstance()->apiClient.
  *
- * Test seams: callers can override `$baseUri`, `$itemFields`,
- * `$displayFields`, or inject a pre-configured `GuzzleClient` via
- * `setClient()` to run without a full Craft bootstrap.
+ * Test seams: callers can override `$baseUri` or `$itemFields`, or inject
+ * a pre-configured `GuzzleClient` via `setClient()` to run without a full
+ * Craft bootstrap.
  */
 class ApiClient extends Component
 {
@@ -31,9 +31,6 @@ class ApiClient extends Component
 
     /** Fields query override for getDocument(). Falls back to plugin settings when null. */
     public ?string $itemFields = null;
-
-    /** Whether Guzzle verifies SSL. Default true; false in dev-mode fallback. */
-    public ?bool $verify = null;
 
     private ?GuzzleClient $client = null;
 
@@ -58,7 +55,7 @@ class ApiClient extends Component
             'base_uri' => $baseUri,
             'timeout' => 30,
             'connect_timeout' => 10,
-            'verify' => $this->resolveVerify(),
+            'verify' => !self::isLocalDevHost($baseUri),
             'headers' => [
                 'User-Agent' => 'craft-collections-proxy/1.0',
                 'Accept' => 'application/json',
@@ -74,25 +71,18 @@ class ApiClient extends Component
             return $this->baseUri;
         }
         $raw = $this->pluginSetting('serverApiUrl');
-        if ($raw === '') {
-            return null;
-        }
-        if (!class_exists(\craft\helpers\App::class, false)) {
-            return $raw;
-        }
-        $parsed = \craft\helpers\App::parseEnv($raw);
-        return is_string($parsed) ? $parsed : null;
+        return $raw !== '' ? $raw : null;
     }
 
-    protected function resolveVerify(): bool
+    /**
+     * Skip TLS verification only when the target host is a conventional
+     * local-dev endpoint (wrangler dev, DDEV host bridge, etc.) where
+     * mkcert / self-signed certs are the norm. Real hostnames stay strict.
+     */
+    private static function isLocalDevHost(string $baseUri): bool
     {
-        if ($this->verify !== null) {
-            return $this->verify;
-        }
-        if (class_exists(\craft\helpers\App::class, false) && \craft\helpers\App::env('CRAFT_ENVIRONMENT') === 'dev') {
-            return false;
-        }
-        return true;
+        $host = parse_url($baseUri, PHP_URL_HOST);
+        return in_array($host, ['localhost', '127.0.0.1', 'host.docker.internal'], true);
     }
 
     protected function resolveItemFields(): string

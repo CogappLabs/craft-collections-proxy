@@ -25,14 +25,18 @@ All three speak identical endpoints, so the backend can be swapped by changing t
 
 ## What the plugin provides
 
-- **Plugin settings** (`src/models/Settings.php`) — native Craft `Model` with `EnvAttributeParserBehavior` on the `serverApiUrl`, `publicApiUrl`, and `index` attributes. Visible at **Settings → Plugins → Collections Proxy**. Other fields: `titleField`, `itemFields`. (`searchFields` and `displayFields` were removed — they were Searchkit/frontend concerns that bled through. Hardcode search + result attributes in your consuming site's React code.)
-- **`ApiClient` service** (`src/services/ApiClient.php`) — Guzzle-based HTTP client with injectable client for tests. Methods: `search($index, $query, $perPage, $page)` returns `['results' => [...], 'totalResults' => int, 'took' => int]`; `getDocument($index, $id)` returns the `_source` document directly. Shared `pluginSetting(string $key, string $default)` helper consolidates the "read from plugin settings with test-context fallback" pattern so `resolveItemFields` and `resolveBaseUri` stay one-liners.
-- **`{% collectionDocument %}` Twig tag** (`src/web/twig/`) — parses to `{% collectionDocument 'index' id as doc %}`, calls `ApiClient::getDocument()` via a custom node, and assigns the result to the given variable name. Registered via `src/web/twig/Extension.php`.
-- **CP nav item + subnav** — registers a "Collections Proxy" nav entry with two sub-pages: **Search** (a vanilla-JS test panel at `/admin/collections-proxy` that calls `SearchController::actionQuery` via `Craft.sendActionRequest`) and **Settings** (deep link into the standard plugin settings page). Template at `src/templates/search.twig`, asset bundle at `src/web/assets/SearchAsset.php`.
-- **`SearchController`** (`src/controllers/SearchController.php`) — AJAX endpoint behind the CP panel; reuses the `ApiClient` service. Shared by the CP search page, the dashboard widget, and the SearchLinkField.
-- **`SearchLinkField`** (`src/fields/SearchLinkField.php`) — A custom field type that lets editors search the Collections API and store a link to a collection document (stores `indexHandle`, `documentId`, and `documentTitle`). The index is configurable in field settings. Uses vanilla JS (no Sprig) and shares the `SearchController` action with the CP search page and widget.
-- **Dashboard widget** (`src/widgets/SearchWidget.php`) — A "Collection Search" CP dashboard widget. Compact search box that queries the API and shows results with links to item pages.
-- **CP search results link to frontend** — Results in the CP search panel (`src/web/assets/dist/search.js`) link to the frontend item page rather than staying within the CP.
+The public surface is three things:
+
+1. **`SearchLinkField`** (`src/fields/SearchLinkField.php`) — a custom field type that lets editors search the Collections API and store a link to a collection document (persists `documentId`, `documentTitle`, `documentThumbnail`). The index is configurable per-field and falls back to the global plugin setting. Vanilla JS (no Sprig); posts to `SearchController::actionQuery` via `Craft.sendActionRequest`.
+2. **`{% collectionDocument 'index' id as doc %}` Twig tag** — fetches a single document for server-rendered item pages.
+3. **`{% collectionDocuments 'index' ids[, fields] as docs %}` Twig tag** — batch-fetches N documents via `_mget`, returns an array keyed by ID. Useful on index/listing templates that need lots of thumbnails in one round-trip.
+4. **`{% collectionSearch 'index', query[, perPage[, page]] as results %}` Twig tag** — runs a search and assigns the normalised `{results, totalResults, took}` shape. Intended for server-rendered fragments (e.g. Datastar SSE responses).
+
+Plus the supporting pieces:
+
+- **Plugin settings** (`src/models/Settings.php`) — native Craft `Model` with `EnvAttributeParserBehavior` on `serverApiUrl`, `publicApiUrl`, and `index`. Visible at **Settings → Plugins → Collections Proxy**. Other fields: `titleField`, `itemFields`.
+- **`ApiClient` service** (`src/services/ApiClient.php`) — Guzzle-based HTTP client that powers the tags + field controller. Methods: `search`, `getDocument`, `getDocuments`. Treat as internal — consumers should use the Twig tags above rather than `plugin.apiClient.*`.
+- **`SearchController`** (`src/controllers/SearchController.php`) — single action (`actionQuery`) behind the SearchLinkField's search box.
 
 ## Architecture
 
@@ -40,7 +44,7 @@ All three speak identical endpoints, so the backend can be swapped by changing t
 - Extends `craft\base\Plugin`
 - `schemaVersion = '1.0.0'`, `hasCpSettings = true`
 - Registers the `apiClient` component via `config()`
-- `init()` wires up the Twig extension, CP URL rules, and CP nav item inside `$app->onInit()`
+- `init()` wires up the Twig extension and registers the `SearchLinkField` type inside `$app->onInit()`
 - `createSettingsModel()` returns a `Settings` instance; `settingsHtml()` renders `collections-proxy/_settings`
 
 ### Settings model
@@ -54,7 +58,7 @@ All three speak identical endpoints, so the backend can be swapped by changing t
 
 ### Tests
 
-14 PHPUnit tests, 39 assertions. Uses `GuzzleHttp\Handler\MockHandler` + injected client pattern — no live HTTP in the test suite.
+PHPUnit tests for `ApiClient` live in `tests/unit/ApiClientTest.php`. Uses `GuzzleHttp\Handler\MockHandler` + injected client pattern — no live HTTP, no Craft bootstrap.
 
 Run from the testbed / consuming project so PHP + Craft autoload are available via the DDEV container:
 

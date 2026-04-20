@@ -155,6 +155,42 @@ class ApiClientTest extends TestCase
         self::assertNull($client->getDocument('x', 'abc'));
     }
 
+    public function testGetDocumentsKeysByIdAndPassesFields(): void
+    {
+        $history = [];
+        $payload = [
+            'docs' => [
+                ['_id' => 'a', '_source' => ['title' => 'Apple']],
+                ['_id' => 'b', '_source' => ['title' => 'Banana']],
+            ],
+        ];
+        $client = $this->buildClient([new Response(200, [], json_encode($payload))], $history);
+        $result = $client->getDocuments('my-index', ['a', 'b'], 'title');
+
+        self::assertSame('Apple', $result['a']['title']);
+        self::assertSame('Banana', $result['b']['title']);
+
+        /** @var Request $req */
+        $req = $history[0]['request'];
+        self::assertSame('POST', $req->getMethod());
+        self::assertSame('/api/v1/my-index/_mget', $req->getUri()->getPath());
+        $body = json_decode($req->getBody()->getContents(), true);
+        self::assertSame(['a', 'b'], $body['ids']);
+        self::assertSame('title', $body['fields']);
+    }
+
+    public function testGetDocumentsReturnsEmptyOnNoIds(): void
+    {
+        $client = $this->buildClient([]);
+        self::assertSame([], $client->getDocuments('my-index', []));
+    }
+
+    public function testGetDocumentsReturnsEmptyOnTransportError(): void
+    {
+        $client = $this->buildClient([new \RuntimeException('boom')]);
+        self::assertSame([], $client->getDocuments('my-index', ['a']));
+    }
+
     public function testClientReturnsNullWhenNoBaseUriConfigured(): void
     {
         // No baseUri set, no injected client, no Craft bootstrap — should

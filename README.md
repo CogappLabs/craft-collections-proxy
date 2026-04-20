@@ -6,12 +6,11 @@ Designed to sit in front of any of the [FAMSF Collections API](https://github.co
 
 ## What it gives you
 
-- **`{% collectionDocument %}` Twig tag** for server-side document fetching on item pages.
-- **PHP service** for programmatic use elsewhere in your Craft codebase.
+- **`SearchLinkField`** — a custom field type that lets editors search the Collections API and store a link to a collection document (document ID + title + thumbnail URL). Index is configurable per-field; vanilla JS, no Sprig.
+- **`{% collectionDocument 'index' id as doc %}`** — Twig tag for server-rendered item pages.
+- **`{% collectionDocuments 'index' ids[, fields] as docs %}`** — batch document fetch (backed by `_mget`), returns an array keyed by ID.
+- **`{% collectionSearch 'index', query[, perPage[, page]] as results %}`** — run a search; assigns `{results, totalResults, took}`.
 - **Native plugin settings** (env-var aware via Craft's `EnvAttributeParserBehavior`) stored under `Settings → Plugins → Collections Proxy`.
-- **CP search panel** for testing queries against the configured API from inside the control panel. Results link to the frontend item page.
-- **SearchLinkField** — a custom field type that lets editors search the Collections API and store a link to a collection document (index handle + document ID + title). Configurable index in field settings; vanilla JS, no Sprig.
-- **Dashboard widget** — a "Collection Search" CP dashboard widget with a compact search box, results with links to item pages.
 
 ## Install
 
@@ -47,13 +46,15 @@ return [
     'publicApiUrl' => App::env('PUBLIC_COLLECTIONS_API_URL'),
     'index' => App::env('COLLECTIONS_INDEX'),
     'titleField' => 'title',
-    'searchFields' => 'title,description*',
+    'itemFields' => '',
 ];
 ```
 
 Values in this file are merged with CP-saved settings; the file wins.
 
-## Twig tag
+## Twig tags
+
+Single document — for item pages:
 
 ```twig
 {% set settings = craft.app.plugins.getPlugin('collections-proxy').getSettings() %}
@@ -62,34 +63,31 @@ Values in this file are merged with CP-saved settings; the file wins.
 <h1>{{ attribute(doc, settings.titleField) ?? 'Untitled' }}</h1>
 ```
 
-The tag fetches via the plugin's `ApiClient`, which calls:
+Batch document fetch — for listing templates that need N thumbnails in one round-trip:
 
-```
-GET {serverApiUrl}/api/v1/{index}/{id}?fields={itemFields}
-```
-
-and expects the API to return the document `_source` as the body.
-
-## PHP service
-
-```php
-use cogapp\collectionsproxy\Plugin;
-
-$doc = Plugin::getInstance()->apiClient->getDocument('my-index', 'abc123');
-$results = Plugin::getInstance()->apiClient->search('my-index', 'chair', 20, 1);
+```twig
+{% collectionDocuments settings.index docIds, 'iiif_thumbnail_url,title' as docs %}
+{% for id in docIds %}
+  <img src="{{ docs[id].iiif_thumbnail_url ?? '' }}" alt="{{ docs[id].title ?? '' }}">
+{% endfor %}
 ```
 
-`search()` returns a normalised shape: `['results' => [...], 'totalResults' => int, 'took' => int]`.
+Search — for server-rendered fragments (e.g. Datastar SSE responses):
 
-## CP search panel
+```twig
+{% collectionSearch settings.index, 'Joshua Johnson', 5 as related %}
+{% for hit in related.results %}
+  <a href="{{ url('item/' ~ hit.id) }}">{{ hit.source.title }}</a>
+{% endfor %}
+```
 
-Visit **Collections Proxy** in the main CP nav for a simple search form that calls the configured API via `Craft.sendActionRequest`. Useful for smoke-testing the API connection without leaving Craft.
+All three tags hit the configured `serverApiUrl` backend; it must speak the Elasticsearch / OpenSearch response shape documented below.
 
 ## Development
 
 ```bash
 composer install
-composer test       # phpunit — 14 tests, 39 assertions, MockHandler-based (no live HTTP)
+composer test       # phpunit — MockHandler-based (no live HTTP, no Craft bootstrap)
 composer phpstan    # phpstan level 8, no baseline
 ```
 
@@ -106,6 +104,7 @@ The plugin assumes the backend speaks:
 
 - `GET /api/v1/:index?q=&perPage=&page=&fields=` → `{ hits: { hits: [{ _id, _source }], total: { value } }, took }`
 - `GET /api/v1/:index/:id?fields=` → the `_source` object directly
+- `POST /api/v1/:index/_mget` with `{ ids: [...], fields: '...' }` → `{ docs: [{ _id, _source }, ...] }`
 
 ## License
 
