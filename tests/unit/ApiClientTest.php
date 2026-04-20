@@ -159,13 +159,20 @@ class ApiClientTest extends TestCase
     {
         $history = [];
         $payload = [
-            'docs' => [
-                ['_id' => 'a', '_source' => ['title' => 'Apple']],
-                ['_id' => 'b', '_source' => ['title' => 'Banana']],
+            'responses' => [
+                [
+                    'hits' => [
+                        'total' => ['value' => 2],
+                        'hits' => [
+                            ['_id' => 'a', '_source' => ['title' => 'Apple']],
+                            ['_id' => 'b', '_source' => ['title' => 'Banana']],
+                        ],
+                    ],
+                ],
             ],
         ];
         $client = $this->buildClient([new Response(200, [], json_encode($payload))], $history);
-        $result = $client->getDocuments('my-index', ['a', 'b'], 'title');
+        $result = $client->getDocuments('my-index', ['a', 'b'], 'title,iiif_thumbnail_url');
 
         self::assertSame('Apple', $result['a']['title']);
         self::assertSame('Banana', $result['b']['title']);
@@ -173,10 +180,36 @@ class ApiClientTest extends TestCase
         /** @var Request $req */
         $req = $history[0]['request'];
         self::assertSame('POST', $req->getMethod());
-        self::assertSame('/api/v1/my-index/_mget', $req->getUri()->getPath());
-        $body = json_decode($req->getBody()->getContents(), true);
-        self::assertSame(['a', 'b'], $body['ids']);
-        self::assertSame('title', $body['fields']);
+        self::assertSame('/api/v1/_msearch', $req->getUri()->getPath());
+        self::assertSame('application/x-ndjson', $req->getHeaderLine('Content-Type'));
+
+        $raw = $req->getBody()->getContents();
+        $lines = array_values(array_filter(explode("\n", $raw), static fn ($l) => $l !== ''));
+        self::assertCount(2, $lines);
+
+        $header = json_decode($lines[0], true);
+        self::assertSame('my-index', $header['index']);
+
+        $queryBody = json_decode($lines[1], true);
+        self::assertSame(['a', 'b'], $queryBody['query']['ids']['values']);
+        self::assertSame(2, $queryBody['size']);
+        self::assertSame(['title', 'iiif_thumbnail_url'], $queryBody['_source']);
+    }
+
+    public function testGetDocumentsOmitsSourceWhenNoFieldsGiven(): void
+    {
+        $history = [];
+        $client = $this->buildClient(
+            [new Response(200, [], '{"responses":[{"hits":{"hits":[]}}]}')],
+            $history,
+        );
+        $client->getDocuments('my-index', ['a']);
+
+        /** @var Request $req */
+        $req = $history[0]['request'];
+        $lines = array_values(array_filter(explode("\n", $req->getBody()->getContents()), static fn ($l) => $l !== ''));
+        $queryBody = json_decode($lines[1], true);
+        self::assertArrayNotHasKey('_source', $queryBody);
     }
 
     public function testGetDocumentsReturnsEmptyOnNoIds(): void

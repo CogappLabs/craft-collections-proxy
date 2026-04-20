@@ -8,16 +8,22 @@ use craft\web\Controller;
 use yii\web\Response;
 
 /**
- * CP search controller. Backs the Collections Proxy -> Search panel with a
- * JSON action endpoint that wraps ApiClient::search().
+ * AJAX backend for the `SearchLinkField` search box.
+ *
+ * The field's vanilla-JS widget calls this action via
+ * `Craft.sendActionRequest`, which requires an authenticated CP user —
+ * `requirePermission('accessCp')` below is the trust boundary.
  *
  * Reached via the standard Craft action URL:
- *   actions/collections-proxy/search/query?index=...&q=...&perPage=...
+ *   actions/collections-proxy/search/query?index=…&q=…&perPage=…&page=…
  */
 class SearchController extends Controller
 {
     /**
-     * JSON search endpoint for the CP search page.
+     * JSON search endpoint. Validates the `index` param against a strict
+     * character allow-list (prevents abuse of the action to probe arbitrary
+     * backend paths), falls back to the plugin's default index when omitted,
+     * and delegates to `ApiClient::search()`.
      */
     public function actionQuery(): Response
     {

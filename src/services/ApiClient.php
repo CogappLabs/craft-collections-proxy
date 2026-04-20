@@ -9,16 +9,25 @@ use yii\base\Component;
 
 /**
  * Thin HTTP client for a read-only Collections API that speaks the
- * Elasticsearch response shape:
+ * Elasticsearch response shape.
  *
- *   GET /api/v1/:index?q=&perPage=&page=&fields=
+ * Endpoints consumed:
+ *
+ *   GET  /api/v1/:index?q=&perPage=&page=&fields=
  *     → { hits: { hits: [{ _id, _source }], total: { value } }, took }
  *
- *   GET /api/v1/:index/:id?fields=
+ *   GET  /api/v1/:index/:id?fields=
  *     → the _source object directly
  *
- * Used by the Twig `{% collectionDocument %}` tag and available for
- * programmatic use via Plugin::getInstance()->apiClient.
+ *   POST /api/v1/_msearch            NDJSON: { "index": ":index" } / query
+ *     → { responses: [{ hits: { hits: [{ _id, _source }], total: { value } }, took }, ...] }
+ *       (used by `getDocuments()` with an `ids` query)
+ *
+ * This class powers the three Twig tags (`{% collectionDocument %}`,
+ * `{% collectionDocuments %}`, `{% collectionSearch %}`) and the
+ * `SearchLinkField`'s search-box action. It is considered internal —
+ * consuming templates should use the tags, not reach into
+ * `Plugin::getInstance()->apiClient` directly.
  *
  * Test seams: callers can override `$baseUri` or `$itemFields`, or inject
  * a pre-configured `GuzzleClient` via `setClient()` to run without a full
@@ -26,20 +35,33 @@ use yii\base\Component;
  */
 class ApiClient extends Component
 {
-    /** Base URI override. Falls back to the plugin settings when null. */
+    /** Base URI override. When null, resolved from the plugin settings (`serverApiUrl`). */
     public ?string $baseUri = null;
 
-    /** Fields query override for getDocument(). Falls back to plugin settings when null. */
+    /**
+     * `fields=` query override for document fetches (`getDocument` / `getDocuments`).
+     * When null, falls back to the plugin's `itemFields` setting; when that is
+     * empty too, no `fields=` parameter is sent and the backend returns the full
+     * `_source`.
+     */
     public ?string $itemFields = null;
 
     private ?GuzzleClient $client = null;
 
-    /** Test seam: inject a pre-built Guzzle client (with mocked handler, etc.). */
+    /**
+     * Test seam: inject a pre-built Guzzle client (typically wired to a
+     * `MockHandler`) so tests can exercise the full request pipeline without
+     * needing network access or a Craft bootstrap.
+     */
     public function setClient(GuzzleClient $client): void
     {
         $this->client = $client;
     }
 
+    /**
+     * Lazy-constructs the Guzzle client on first use. Returns null when no
+     * base URI is configured so every public call can no-op gracefully.
+     */
     private function client(): ?GuzzleClient
     {
         if ($this->client !== null) {
@@ -156,6 +178,14 @@ class ApiClient extends Component
      * Fetch multiple documents by ID in a single request.
      * Returns an array keyed by document ID => _source.
      *
+     * Implemented via `_msearch` + an `ids` query rather than `_mget`, so it
+     * works against any backend that exposes `POST /api/v1/_msearch` (the
+     * standard multi-search endpoint). The request body is NDJSON with a
+     * `size` equal to the number of IDs so Elasticsearch's default 10-hit
+     * cap doesn't silently truncate large lookups, and optional `_source`
+     * filtering mirrors what `getDocument()` does with its `fields=` query
+     * param.
+     *
      * @param string[] $ids
      * @param string|null $fields Comma-separated field list (null = use itemFields setting)
      * @return array<string, array<string, mixed>>
@@ -167,25 +197,40 @@ class ApiClient extends Component
             return [];
         }
 
-        $body = ['ids' => $ids];
         $resolvedFields = $fields ?? $this->resolveItemFields();
+
+        $queryBody = [
+            'query' => ['ids' => ['values' => array_values($ids)]],
+            'size' => count($ids),
+        ];
         if ($resolvedFields !== '') {
-            $body['fields'] = $resolvedFields;
+            $queryBody['_source'] = array_map('trim', explode(',', $resolvedFields));
         }
 
+        $ndjson = json_encode(['index' => $index]) . "\n"
+            . json_encode($queryBody) . "\n";
+
         try {
-            $response = $client->post("/api/v1/{$index}/_mget", [
-                'json' => $body,
+            $response = $client->post('/api/v1/_msearch', [
+                'body' => $ndjson,
+                'headers' => ['Content-Type' => 'application/x-ndjson'],
             ]);
             $data = json_decode($response->getBody()->getContents(), true);
-            if (!is_array($data) || !isset($data['docs'])) {
+            $first = is_array($data) && is_array($data['responses'] ?? null)
+                ? ($data['responses'][0] ?? null)
+                : null;
+            if (!is_array($first)) {
+                return [];
+            }
+            $hits = $first['hits']['hits'] ?? [];
+            if (!is_array($hits)) {
                 return [];
             }
 
             $result = [];
-            foreach ($data['docs'] as $doc) {
-                if (isset($doc['_id'], $doc['_source']) && is_array($doc['_source'])) {
-                    $result[(string) $doc['_id']] = $doc['_source'];
+            foreach ($hits as $hit) {
+                if (isset($hit['_id'], $hit['_source']) && is_array($hit['_source'])) {
+                    $result[(string) $hit['_id']] = $hit['_source'];
                 }
             }
             return $result;
@@ -199,9 +244,10 @@ class ApiClient extends Component
      * Search an index. Returns a normalised shape:
      *   ['results' => [...], 'totalResults' => int, 'took' => int]
      *
-     * Used by the plugin's CP search panel and any custom PHP callers.
-     * The React/Searchkit frontend does NOT use this — it talks to the
-     * API directly and defines its own result projection client-side.
+     * Called by the `{% collectionSearch %}` Twig tag and by the
+     * `SearchLinkField`'s AJAX search box (via SearchController).
+     * Returns a safe empty shape on transport / HTTP errors so callers
+     * never have to null-check.
      *
      * @return array{results: array<int, array{id: mixed, source: array<string, mixed>}>, totalResults: int, took: int}
      */

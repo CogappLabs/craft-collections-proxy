@@ -14,6 +14,15 @@ use craft\services\Fields;
 use yii\base\Event;
 
 /**
+ * Entry point for the Collections Proxy plugin.
+ *
+ * Responsibilities:
+ *  - register the shared `apiClient` Yii component (the internal HTTP client)
+ *  - register the `@cogapp/collectionsproxy` path alias for template + asset lookups
+ *  - register the Twig extension (which exposes the three tags)
+ *  - register the `SearchLinkField` field type
+ *  - expose CP settings for serverApiUrl / publicApiUrl / index
+ *
  * @property ApiClient $apiClient
  * @method Settings getSettings()
  */

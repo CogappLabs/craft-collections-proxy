@@ -10,16 +10,33 @@ use craft\helpers\Html;
 use yii\db\Schema;
 
 /**
- * A field type that lets editors search the Collections API and store
- * a link to a document (id + title + thumbnail URL). Uses vanilla JS —
- * no Sprig/htmx dependency.
+ * Custom field type for picking a single Collections API document.
+ *
+ * Editors type a query, get live results (thumbnails + title + id), and
+ * click to select. The field persists three values to its own multi-
+ * column DB row: `documentId`, `documentTitle`, and `documentThumbnail`.
+ * Persisting the thumbnail URL means the saved-document view renders
+ * without having to re-hit the API on every edit-screen load.
+ *
+ * The search box talks to `SearchController::actionQuery` via
+ * `Craft.sendActionRequest` (vanilla JS — no Sprig/htmx dependency).
+ * The controller then delegates to `ApiClient::search()`, so the field
+ * inherits the same backend + caching story as the Twig tags.
  */
 class SearchLinkField extends Field
 {
-    /** The search index to search within (env-var aware). */
+    /**
+     * Per-field index override. Empty = use the plugin's global `index`
+     * setting. Env-var aware via the field settings form.
+     */
     public string $index = '';
 
-    /** Name of the `_source` field holding a thumbnail URL. Empty = no thumbnails. */
+    /**
+     * Name of the `_source` field on each hit that holds a thumbnail URL
+     * (e.g. `thumbnail_url`, `iiif_thumbnail_url`). Empty = hide
+     * thumbnails in the search UI. No URL rewriting is performed — the
+     * stored value is whatever the API returned.
+     */
     public string $thumbnailField = '';
 
     public static function displayName(): string
@@ -32,7 +49,12 @@ class SearchLinkField extends Field
         return 'link';
     }
 
-    /** @return array<string, string> */
+    /**
+     * Multi-column storage: each entry becomes a column in the content
+     * table, named `field_{handle}_{key}`.
+     *
+     * @return array<string, string>
+     */
     public static function dbType(): array
     {
         return [
