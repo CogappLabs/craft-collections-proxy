@@ -1,8 +1,8 @@
 # Craft Collections Proxy
 
-A Craft CMS 5 plugin that exposes a lightweight HTTP client and Twig tag for a read-only Collections API that speaks the Elasticsearch / OpenSearch response shape.
+A Craft CMS 5 plugin that exposes three Twig tags and a `SearchLinkField` custom field for talking to any read-only HTTP API that speaks the Elasticsearch response shape.
 
-Designed to sit in front of any of the [FAMSF Collections API](https://github.com/CogappLabs) flavours (Bun/Elysia on Railway, Laravel Octane on Railway, or Hono on Cloudflare Workers). All three speak the same endpoints, so you can swap between them by changing the `serverApiUrl` setting.
+The plugin handles transport, caching-friendly server-side fetches, and the CP authoring UI. It makes no assumptions about the shape of the documents — field names, URL rewriting, and IIIF proxying are all the consuming site's concern.
 
 ## What it gives you
 
@@ -66,9 +66,9 @@ Single document — for item pages:
 Batch document fetch — for listing templates that need N thumbnails in one round-trip:
 
 ```twig
-{% collectionDocuments settings.index docIds, 'iiif_thumbnail_url,title' as docs %}
+{% collectionDocuments settings.index docIds, 'thumbnail_url,title' as docs %}
 {% for id in docIds %}
-  <img src="{{ docs[id].iiif_thumbnail_url ?? '' }}" alt="{{ docs[id].title ?? '' }}">
+  <img src="{{ docs[id].thumbnail_url ?? '' }}" alt="{{ docs[id].title ?? '' }}">
 {% endfor %}
 ```
 
@@ -81,7 +81,7 @@ Search — for server-rendered fragments (e.g. Datastar SSE responses):
 {% endfor %}
 ```
 
-All three tags hit the configured `serverApiUrl` backend; it must speak the Elasticsearch / OpenSearch response shape documented below.
+All three tags hit the configured `serverApiUrl` backend; it must speak the Elasticsearch response shape documented below.
 
 ## Development
 

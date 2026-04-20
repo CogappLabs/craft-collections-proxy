@@ -4,15 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-A Craft CMS 5 plugin that exposes a lightweight HTTP client and Twig tag for a read-only Collections API speaking the Elasticsearch / OpenSearch response shape. Extracted from the Craft module that originally lived inside [`craft-searchkit`](https://github.com/CogappLabs/craft-searchkit).
+A Craft CMS 5 plugin that exposes three Twig tags and a `SearchLinkField` custom field for talking to any read-only HTTP API that speaks the Elasticsearch response shape (documents as `_source`, search results as `{ hits: { hits: [...], total: { value } }, took }`).
 
-Designed to sit in front of any of the FAMSF Collections API flavours:
-
-- **cf-collections-api** — Hono on Cloudflare Workers (primary, recommended)
-- **bun-collections-api** — Bun/Elysia on Railway
-- **laravel-collections-api** — Laravel Octane + FrankenPHP on Railway
-
-All three speak identical endpoints, so the backend can be swapped by changing the `serverApiUrl` / `publicApiUrl` settings.
+The plugin makes no assumptions about the shape of the documents it returns — it's a transport + UI layer. Anything site-specific (field names, URL rewriting, IIIF proxying, etc.) lives in the consuming project.
 
 ## Package info
 
@@ -80,7 +74,7 @@ ddev exec bash -c "cd /var/www/craft-collections-proxy && composer phpstan"
 
 The `craft-searchkit` testbed depends on this plugin via a VCS repository entry in its `composer.json`. To test local edits:
 
-1. Check out this repo as a sibling to `craft-searchkit/` (both under `~/git/famsf-collections/`).
+1. Check out this repo as a sibling to the consuming Craft project.
 2. `.ddev/docker-compose.craft-collections-proxy.yaml` in `craft-searchkit/` bind-mounts this directory into the web container at `/var/www/craft-collections-proxy`.
 3. A `post-start` hook in `craft-searchkit/.ddev/config.yaml` symlinks `vendor/cogapp/craft-collections-proxy/` → the bind mount.
 4. Edits are picked up immediately; `ddev exec php craft clear-caches/compiled-templates` if Twig changes don't show up.
@@ -106,12 +100,6 @@ The plugin assumes the backend speaks:
 
 - `GET /api/v1/:index?q=&perPage=&page=&fields=` → `{ hits: { hits: [{ _id, _source }], total: { value } }, took }`
 - `GET /api/v1/:index/:id?fields=` → the `_source` object directly
+- `POST /api/v1/:index/_mget` with `{ ids: [...], fields: '...' }` → `{ docs: [{ _id, _source }, ...] }`
 
-All three sibling Collections API flavours conform to this shape.
-
-## Related repositories
-
-- **craft-searchkit** — [github.com/CogappLabs/craft-searchkit](https://github.com/CogappLabs/craft-searchkit) — the Craft CMS site that consumes this plugin
-- **cf-collections-api** — [github.com/CogappLabs/cf-collections-api](https://github.com/CogappLabs/cf-collections-api) — Hono/Workers backend (primary)
-- **bun-collections-api** — [github.com/CogappLabs/bun-collections-api](https://github.com/CogappLabs/bun-collections-api)
-- **laravel-collections-api** — [github.com/CogappLabs/laravel-collections-api](https://github.com/CogappLabs/laravel-collections-api)
+Any HTTP service that returns responses in this shape will work.

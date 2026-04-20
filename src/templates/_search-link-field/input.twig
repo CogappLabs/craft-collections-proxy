@@ -1,6 +1,7 @@
 <div class="search-link-field"
      data-action-url="{{ actionUrl }}"
      data-index="{{ index }}"
+     data-thumb-field="{{ thumbnailField }}"
      data-field-handle="{{ field.handle }}">
 
     <input type="hidden" name="{{ field.handle }}[documentId]" value="{{ documentId }}" class="slf-doc-id">
@@ -12,7 +13,7 @@
         <div style="display:flex; align-items:flex-start; gap:0.75rem; padding:0.75rem; background:var(--gray-050); border-radius:4px;">
             <div class="slf-selected-thumb" style="flex-shrink:0; width:80px; height:80px; border-radius:4px; overflow:hidden; background:var(--gray-100);{% if not documentThumbnail %} display:none{% endif %}">
                 <img class="slf-selected-img"
-                     src="{{ documentThumbnail ? documentThumbnail|replace({'https://famsf.emuseum.com/apis/iiif/image/v2/': '/_iiif/', 'https://famsf.emuseum.com/apis/iiif/image/v3/': '/_iiif/'}) : '' }}"
+                     src="{{ documentThumbnail }}"
                      alt="{{ documentTitle }}"
                      style="width:100%; height:100%; object-fit:cover;"
                      loading="lazy">
@@ -46,6 +47,7 @@
 
     var actionUrl = wrapper.getAttribute('data-action-url');
     var index = wrapper.getAttribute('data-index');
+    var thumbField = wrapper.getAttribute('data-thumb-field') || '';
     var docIdInput = wrapper.querySelector('.slf-doc-id');
     var docTitleInput = wrapper.querySelector('.slf-doc-title');
     var docThumbInput = wrapper.querySelector('.slf-doc-thumb');
@@ -60,9 +62,10 @@
     var resultsEl = wrapper.querySelector('.slf-results');
     var clearBtn = wrapper.querySelector('.slf-clear');
 
-    function proxyThumb(url) {
-        if (!url) return '';
-        return url.replace(/https?:\/\/famsf\.emuseum\.com\/apis\/iiif\/image\/v[23]\//, '/_iiif/');
+    function readThumb(source) {
+        if (!thumbField || !source) return '';
+        var val = source[thumbField];
+        return typeof val === 'string' ? val : '';
     }
 
     function selectDoc(id, title, thumbUrl) {
@@ -72,7 +75,7 @@
         selectedTitle.textContent = title;
         selectedId.textContent = '#' + id;
         if (thumbUrl) {
-            selectedImg.src = proxyThumb(thumbUrl);
+            selectedImg.src = thumbUrl;
             selectedImg.alt = title;
             selectedThumb.style.display = '';
         } else {
@@ -113,10 +116,9 @@
                     var s = items[i].source || {};
                     var title = s.title || s.name || '(untitled)';
                     var id = items[i].id;
-                    var thumb = s.iiif_thumbnail_url || '';
-                    var proxiedThumb = proxyThumb(thumb);
-                    var thumbHtml = proxiedThumb
-                        ? '<img src="' + Craft.escapeHtml(proxiedThumb) + '" alt="" style="width:40px; height:40px; object-fit:cover; border-radius:3px; flex-shrink:0;">'
+                    var thumb = readThumb(s);
+                    var thumbHtml = thumb
+                        ? '<img src="' + Craft.escapeHtml(thumb) + '" alt="" style="width:40px; height:40px; object-fit:cover; border-radius:3px; flex-shrink:0;">'
                         : '<div style="width:40px; height:40px; background:var(--gray-100); border-radius:3px; flex-shrink:0;"></div>';
                     html += '<li style="padding:0.4rem 0; border-bottom:1px solid var(--gray-200); cursor:pointer; display:flex; align-items:center; gap:0.5rem;" '
                         + 'data-id="' + Craft.escapeHtml(String(id)) + '" '
@@ -134,7 +136,7 @@
 
                 resultsEl.querySelectorAll('li').forEach(function (li) {
                     li.addEventListener('click', function () {
-                        selectDoc(this.getAttribute('data-id'), this.getAttribute('data-title'), this.getAttribute('data-thumb'));
+                        selectDoc(li.getAttribute('data-id'), li.getAttribute('data-title'), li.getAttribute('data-thumb'));
                     });
                 });
             })

@@ -1,6 +1,6 @@
 {
     "name": "cogapp/craft-collections-proxy",
-    "description": "Craft CMS plugin that exposes a lightweight HTTP client and Twig tag for a read-only Collections API (Elasticsearch / OpenSearch shape).",
+    "description": "Craft CMS plugin that exposes Twig tags and a custom field for talking to a read-only HTTP API that speaks the Elasticsearch response shape.",
     "type": "craft-plugin",
     "license": "MIT",
     "keywords": [
@@ -9,8 +9,6 @@
         "craft-plugin",
         "collections",
         "elasticsearch",
-        "opensearch",
-        "searchkit",
         "api",
         "proxy",
         "twig"
@@ -59,7 +57,7 @@
     "extra": {
         "handle": "collections-proxy",
         "name": "Collections Proxy",
-        "description": "Read-only HTTP client + Twig tag for a Collections API (ES/OS shape).",
+        "description": "Read-only HTTP client + Twig tags for a Collections API (Elasticsearch response shape).",
         "developer": "Cogapp",
         "developerUrl": "https://www.cogapp.com",
         "documentationUrl": "https://github.com/CogappLabs/craft-collections-proxy",

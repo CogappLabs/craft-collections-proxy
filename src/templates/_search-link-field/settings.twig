@@ -7,3 +7,11 @@
     name: 'index',
     value: field.index ?: defaultIndex,
 }) }}
+
+{{ forms.textField({
+    label: "Thumbnail field"|t('collections-proxy'),
+    instructions: "Optional. Name of the `_source` field that holds a thumbnail URL (e.g. `thumbnail_url`). Leave blank to hide thumbnails in the search UI."|t('collections-proxy'),
+    id: 'thumbnailField',
+    name: 'thumbnailField',
+    value: field.thumbnailField,
+}) }}

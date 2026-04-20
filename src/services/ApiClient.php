@@ -9,7 +9,7 @@ use yii\base\Component;
 
 /**
  * Thin HTTP client for a read-only Collections API that speaks the
- * Elasticsearch/OpenSearch response shape:
+ * Elasticsearch response shape:
  *
  *   GET /api/v1/:index?q=&perPage=&page=&fields=
  *     → { hits: { hits: [{ _id, _source }], total: { value } }, took }
@@ -233,7 +233,7 @@ class ApiClient extends Component
     }
 
     /**
-     * Pure parser for an OpenSearch-shaped search response. Extracted so
+     * Pure parser for an Elasticsearch-shaped search response. Extracted so
      * it can be unit tested without any HTTP or Craft dependencies.
      *
      * @param array<string, mixed> $body Decoded response body

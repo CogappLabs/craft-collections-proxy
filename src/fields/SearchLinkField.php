@@ -19,6 +19,9 @@ class SearchLinkField extends Field
     /** The search index to search within (env-var aware). */
     public string $index = '';
 
+    /** Name of the `_source` field holding a thumbnail URL. Empty = no thumbnails. */
+    public string $thumbnailField = '';
+
     public static function displayName(): string
     {
         return 'Collection Search Link';
@@ -43,7 +46,7 @@ class SearchLinkField extends Field
     protected function defineRules(): array
     {
         $rules = parent::defineRules();
-        $rules[] = [['index'], 'string'];
+        $rules[] = [['index', 'thumbnailField'], 'string'];
         return $rules;
     }
 
@@ -129,6 +132,7 @@ class SearchLinkField extends Field
             'field' => $this,
             'fieldId' => $fieldId,
             'index' => $index,
+            'thumbnailField' => $this->thumbnailField,
             'documentId' => $documentId,
             'documentTitle' => $documentTitle,
             'documentThumbnail' => $documentThumbnail,
