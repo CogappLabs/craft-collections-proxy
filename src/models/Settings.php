@@ -31,6 +31,14 @@ class Settings extends Model
     /** Comma-separated fields returned for item/document pages. Set via config file. Empty = all. */
     public string $itemFields = '';
 
+    /**
+     * Directory that holds `{% collectionEsSearch %}` PHP query files.
+     * Accepts Craft path aliases (default `@config/queries`) — kept
+     * outside `templates/` so query files aren't mistaken for Twig
+     * templates.
+     */
+    public string $queryPath = '@config/queries';
+
     public function behaviors(): array
     {
         return [
@@ -40,6 +48,7 @@ class Settings extends Model
                     'serverApiUrl',
                     'publicApiUrl',
                     'index',
+                    'queryPath',
                 ],
             ],
         ];
@@ -49,7 +58,7 @@ class Settings extends Model
     public function defineRules(): array
     {
         return [
-            [['serverApiUrl', 'publicApiUrl', 'index', 'titleField', 'itemFields'], 'string'],
+            [['serverApiUrl', 'publicApiUrl', 'index', 'titleField', 'itemFields', 'queryPath'], 'string'],
             [['serverApiUrl', 'publicApiUrl', 'index'], 'required'],
         ];
     }

@@ -12,6 +12,7 @@ class Extension extends AbstractExtension
             new CollectionDocumentTokenParser(),
             new CollectionDocumentsTokenParser(),
             new CollectionSearchTokenParser(),
+            new CollectionEsSearchTokenParser(),
         ];
     }
 }

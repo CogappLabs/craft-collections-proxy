@@ -235,4 +235,91 @@ class ApiClientTest extends TestCase
             $client->search('x'),
         );
     }
+
+    public function testEsSearchPostsNdjsonAndReturnsNormalisedShape(): void
+    {
+        $history = [];
+        $payload = [
+            'responses' => [
+                [
+                    'took' => 9,
+                    'hits' => [
+                        'total' => ['value' => 2],
+                        'max_score' => 1.8,
+                        'hits' => [
+                            ['_id' => 'a', '_score' => 1.8, '_source' => ['title' => 'Apple']],
+                            ['_id' => 'b', '_score' => 1.1, '_source' => ['title' => 'Banana']],
+                        ],
+                    ],
+                    'aggregations' => [
+                        'medium' => ['buckets' => [['key' => 'oil', 'doc_count' => 12]]],
+                    ],
+                ],
+            ],
+        ];
+        $client = $this->buildClient([new Response(200, [], json_encode($payload))], $history);
+
+        $body = [
+            'query' => ['match' => ['title' => 'fruit']],
+            'aggs' => ['medium' => ['terms' => ['field' => 'medium.keyword']]],
+            'size' => 24,
+        ];
+        $result = $client->esSearch('my-index', $body);
+
+        self::assertSame(2, $result['totalResults']);
+        self::assertSame(9, $result['took']);
+        self::assertCount(2, $result['results']);
+        self::assertSame('a', $result['results'][0]['id']);
+        self::assertSame('Apple', $result['results'][0]['source']['title']);
+        self::assertSame(1.8, $result['results'][0]['score']);
+        self::assertSame(12, $result['aggregations']['medium']['buckets'][0]['doc_count']);
+
+        /** @var Request $req */
+        $req = $history[0]['request'];
+        self::assertSame('POST', $req->getMethod());
+        self::assertSame('/api/v1/_msearch', $req->getUri()->getPath());
+        self::assertSame('application/x-ndjson', $req->getHeaderLine('Content-Type'));
+
+        $lines = array_values(array_filter(explode("\n", $req->getBody()->getContents()), static fn ($l) => $l !== ''));
+        self::assertCount(2, $lines);
+        self::assertSame(['index' => 'my-index'], json_decode($lines[0], true));
+        self::assertSame($body, json_decode($lines[1], true));
+    }
+
+    public function testEsSearchReturnsEmptyShapeOnEsError(): void
+    {
+        $payload = ['responses' => [['error' => ['type' => 'parsing_exception', 'reason' => 'bad']]]];
+        $client = $this->buildClient([new Response(200, [], json_encode($payload))]);
+
+        $result = $client->esSearch('my-index', ['query' => ['match_all' => (object) []]]);
+        self::assertSame([], $result['results']);
+        self::assertSame(0, $result['totalResults']);
+        self::assertSame([], $result['aggregations']);
+    }
+
+    public function testEsSearchReturnsEmptyShapeOnTransportError(): void
+    {
+        $client = $this->buildClient([new \RuntimeException('boom')]);
+        $result = $client->esSearch('my-index', ['query' => ['match_all' => (object) []]]);
+        self::assertSame([], $result['results']);
+        self::assertSame(0, $result['totalResults']);
+        self::assertSame(0, $result['took']);
+        self::assertSame([], $result['aggregations']);
+    }
+
+    public function testEsSearchHandlesMissingScoreGracefully(): void
+    {
+        $payload = [
+            'responses' => [[
+                'took' => 1,
+                'hits' => [
+                    'total' => ['value' => 1],
+                    'hits' => [['_id' => 'a', '_source' => ['title' => 'No score']]],
+                ],
+            ]],
+        ];
+        $client = $this->buildClient([new Response(200, [], json_encode($payload))]);
+        $result = $client->esSearch('my-index', []);
+        self::assertNull($result['results'][0]['score']);
+    }
 }

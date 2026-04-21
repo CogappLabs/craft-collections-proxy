@@ -32,6 +32,16 @@
     required: true,
 }) }}
 
+{{ forms.autosuggestField({
+    label: "Query path (experimental)"|t('collections-proxy'),
+    instructions: "**Experimental.** Directory that holds `{% collectionEsSearch %}` PHP query files (`<name>.php`). Path aliases such as `@config/queries` are supported. Defaults to `@config/queries` — kept outside `templates/` so query files aren't mistaken for Twig. The path default and tag signature may change without a deprecation cycle.",
+    id: 'queryPath',
+    name: 'queryPath',
+    value: settings.queryPath,
+    suggestEnvVars: true,
+    suggestAliases: true,
+}) }}
+
 <p class="light" style="margin-top: 1rem;">
     {{ "`titleField` and `itemFields` are read from `config/collections-proxy.php` (or the equivalent env vars) — they're developer config, not site-admin settings, so they're not editable here."|t('collections-proxy')|md }}
 </p>

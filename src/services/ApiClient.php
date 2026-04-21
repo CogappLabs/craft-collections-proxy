@@ -302,4 +302,114 @@ class ApiClient extends Component
             'took' => (int) ($body['took'] ?? 0),
         ];
     }
+
+    /**
+     * Empty result shape returned by `esSearch()` when the call fails or no
+     * client is configured. Stable so templates never have to null-check.
+     *
+     * @return array{
+     *   results: array<int, array{id: mixed, source: array<string, mixed>, score: float|null}>,
+     *   totalResults: int,
+     *   took: int,
+     *   aggregations: array<string, mixed>
+     * }
+     */
+    public static function emptyEsSearchResponse(): array
+    {
+        return ['results' => [], 'totalResults' => 0, 'took' => 0, 'aggregations' => []];
+    }
+
+    /**
+     * Experimental. Signature and returned shape may change without a
+     * deprecation cycle until this stabilises.
+     *
+     * Run a raw Elasticsearch query body against `:index`, transported via
+     * `POST /api/v1/_msearch` so the existing edge-cached endpoint is reused
+     * rather than requiring a new per-index POST route.
+     *
+     * Unwraps `responses[0]` and returns the same normalised shape as
+     * `search()` with `aggregations` added for facet counts. Transport,
+     * HTTP, and ES-level errors (`responses[0].error`) all log and fall
+     * back to `emptyEsSearchResponse()` so templates never crash.
+     *
+     * @param array<string, mixed> $body ES query body — `{query, sort, size, from, aggs, ...}`
+     * @return array{
+     *   results: array<int, array{id: mixed, source: array<string, mixed>, score: float|null}>,
+     *   totalResults: int,
+     *   took: int,
+     *   aggregations: array<string, mixed>
+     * }
+     */
+    public function esSearch(string $index, array $body): array
+    {
+        $client = $this->client();
+        if ($client === null) {
+            return self::emptyEsSearchResponse();
+        }
+
+        $ndjson = json_encode(['index' => $index]) . "\n"
+            . json_encode($body) . "\n";
+
+        try {
+            $response = $client->post('/api/v1/_msearch', [
+                'body' => $ndjson,
+                'headers' => ['Content-Type' => 'application/x-ndjson'],
+            ]);
+            $data = json_decode($response->getBody()->getContents(), true) ?: [];
+        } catch (ClientException $e) {
+            $status = $e->getResponse()->getStatusCode();
+            $this->logError("Collections API esSearch error (HTTP {$status}): " . $e->getMessage());
+            return self::emptyEsSearchResponse();
+        } catch (\Exception $e) {
+            $this->logError('Collections API esSearch error (code ' . $e->getCode() . '): ' . $e->getMessage());
+            return self::emptyEsSearchResponse();
+        }
+
+        $first = is_array($data['responses'][0] ?? null) ? $data['responses'][0] : [];
+        if (isset($first['error'])) {
+            $reason = is_array($first['error']) ? ($first['error']['reason'] ?? 'unknown') : 'unknown';
+            $this->logError('Collections API esSearch ES error: ' . (is_string($reason) ? $reason : 'unknown'));
+            return self::emptyEsSearchResponse();
+        }
+
+        return self::parseEsSearchResponse($first);
+    }
+
+    /**
+     * Pure parser for a single inner `_msearch` response (already unwrapped
+     * from `responses[0]`). Kept static + pure so unit tests can exercise
+     * the shape-normalisation logic without any HTTP or Craft bootstrap.
+     *
+     * @param array<string, mixed> $response Unwrapped `responses[0]` payload
+     * @return array{
+     *   results: array<int, array{id: mixed, source: array<string, mixed>, score: float|null}>,
+     *   totalResults: int,
+     *   took: int,
+     *   aggregations: array<string, mixed>
+     * }
+     */
+    public static function parseEsSearchResponse(array $response): array
+    {
+        $hitsEnvelope = is_array($response['hits'] ?? null) ? $response['hits'] : [];
+        $rawHits = $hitsEnvelope['hits'] ?? [];
+        $hits = is_array($rawHits) ? $rawHits : [];
+
+        $results = array_map(
+            fn(array $hit) => [
+                'id' => $hit['_id'] ?? null,
+                'source' => is_array($hit['_source'] ?? null) ? $hit['_source'] : [],
+                'score' => isset($hit['_score']) && is_numeric($hit['_score']) ? (float) $hit['_score'] : null,
+            ],
+            $hits,
+        );
+
+        $aggs = is_array($response['aggregations'] ?? null) ? $response['aggregations'] : [];
+
+        return [
+            'results' => $results,
+            'totalResults' => (int) ($hitsEnvelope['total']['value'] ?? 0),
+            'took' => (int) ($response['took'] ?? 0),
+            'aggregations' => $aggs,
+        ];
+    }
 }

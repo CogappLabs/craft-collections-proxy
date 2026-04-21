@@ -6,6 +6,7 @@ use Craft;
 use cogapp\collectionsproxy\fields\SearchLinkField;
 use cogapp\collectionsproxy\models\Settings;
 use cogapp\collectionsproxy\services\ApiClient;
+use cogapp\collectionsproxy\services\QueryLoader;
 use cogapp\collectionsproxy\web\twig\Extension as TwigExtension;
 use craft\base\Model;
 use craft\base\Plugin as BasePlugin;
@@ -24,6 +25,7 @@ use yii\base\Event;
  *  - expose CP settings for serverApiUrl / publicApiUrl / index
  *
  * @property ApiClient $apiClient
+ * @property QueryLoader $queryLoader
  * @method Settings getSettings()
  */
 class Plugin extends BasePlugin
@@ -37,6 +39,7 @@ class Plugin extends BasePlugin
         return [
             'components' => [
                 'apiClient' => ApiClient::class,
+                'queryLoader' => QueryLoader::class,
             ],
         ];
     }
@@ -88,5 +91,49 @@ class Plugin extends BasePlugin
                 $event->types[] = SearchLinkField::class;
             },
         );
+    }
+
+    /**
+     * Experimental. Signature may change without a deprecation cycle
+     * until `{% collectionEsSearch %}` stabilises.
+     *
+     * Orchestration helper for the `{% collectionEsSearch %}` tag. Accepts
+     * either a query-name string (loaded via `QueryLoader`) or an inline
+     * array body (used verbatim), then hands the resolved body to
+     * `ApiClient::esSearch()`. Catches any `\Throwable` from the loader so
+     * a broken PHP query file (including a `ParseError` on require) never
+     * crashes the page render — it logs and returns the empty shape.
+     *
+     * @internal Called from the compiled Twig node; not intended to be
+     *           called directly from templates.
+     *
+     * @param array<string, mixed> $params
+     * @return array{
+     *   results: array<int, array{id: mixed, source: array<string, mixed>, score: float|null}>,
+     *   totalResults: int,
+     *   took: int,
+     *   aggregations: array<string, mixed>
+     * }
+     */
+    public function runEsSearch(string $index, mixed $queryOrBody, array $params = []): array
+    {
+        if (is_string($queryOrBody)) {
+            try {
+                $body = $this->queryLoader->load($queryOrBody, $params);
+            } catch (\Throwable $e) {
+                Craft::error('collectionEsSearch query load failed: ' . $e->getMessage(), __METHOD__);
+                return ApiClient::emptyEsSearchResponse();
+            }
+        } elseif (is_array($queryOrBody)) {
+            $body = $queryOrBody;
+        } else {
+            Craft::error(
+                'collectionEsSearch expected string query name or array body, got ' . gettype($queryOrBody),
+                __METHOD__,
+            );
+            return ApiClient::emptyEsSearchResponse();
+        }
+
+        return $this->apiClient->esSearch($index, $body);
     }
 }

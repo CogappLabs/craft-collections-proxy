@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-A Craft CMS 5 plugin that exposes three Twig tags and a `SearchLinkField` custom field for talking to any read-only HTTP API that speaks the Elasticsearch response shape (documents as `_source`, search results as `{ hits: { hits: [...], total: { value } }, took }`).
+A Craft CMS 5 plugin that exposes four Twig tags and a `SearchLinkField` custom field for talking to any read-only HTTP API that speaks the Elasticsearch response shape (documents as `_source`, search results as `{ hits: { hits: [...], total: { value } }, took }`).
 
 The plugin makes no assumptions about the shape of the documents it returns — it's a transport + UI layer. Anything site-specific (field names, URL rewriting, IIIF proxying, etc.) lives in the consuming project.
 
@@ -19,17 +19,19 @@ The plugin makes no assumptions about the shape of the documents it returns — 
 
 ## What the plugin provides
 
-The public surface is three things:
+The public surface is:
 
 1. **`SearchLinkField`** (`src/fields/SearchLinkField.php`) — a custom field type that lets editors search the Collections API and store a link to a collection document (persists `documentId`, `documentTitle`, `documentThumbnail`). The index is configurable per-field and falls back to the global plugin setting. Vanilla JS (no Sprig); posts to `SearchController::actionQuery` via `Craft.sendActionRequest`.
 2. **`{% collectionDocument 'index' id as doc %}` Twig tag** — fetches a single document for server-rendered item pages.
-3. **`{% collectionDocuments 'index' ids[, fields] as docs %}` Twig tag** — batch-fetches N documents via `_mget`, returns an array keyed by ID. Useful on index/listing templates that need lots of thumbnails in one round-trip.
-4. **`{% collectionSearch 'index', query[, perPage[, page]] as results %}` Twig tag** — runs a search and assigns the normalised `{results, totalResults, took}` shape. Intended for server-rendered fragments (e.g. Datastar SSE responses).
+3. **`{% collectionDocuments 'index' ids[, fields] as docs %}` Twig tag** — batch-fetches N documents via `_msearch` with an `ids` query, returns an array keyed by ID. Useful on index/listing templates that need lots of thumbnails in one round-trip.
+4. **`{% collectionSearch 'index', query[, perPage[, page]] as results %}` Twig tag** — runs a plain `?q=` text search and assigns the normalised `{results, totalResults, took}` shape. Intended for server-rendered fragments (e.g. Datastar SSE responses).
+5. **`{% collectionEsSearch 'index', queryOrBody[, params] as results %}` Twig tag** _(experimental)_ — runs a full ES query body via `POST /api/v1/_msearch`; returns `{results, totalResults, took, aggregations}`. The second arg is either a **PHP query-file name** (loaded from `queryPath` via `QueryLoader`) or an **inline Twig hash** used verbatim as the ES body. Runtime dispatches on type. Signature, `queryPath` default, and response shape may change without a deprecation cycle until this stabilises.
 
 Plus the supporting pieces:
 
-- **Plugin settings** (`src/models/Settings.php`) — native Craft `Model` with `EnvAttributeParserBehavior` on `serverApiUrl`, `publicApiUrl`, and `index`. Visible at **Settings → Plugins → Collections Proxy**. Other fields: `titleField`, `itemFields`.
-- **`ApiClient` service** (`src/services/ApiClient.php`) — Guzzle-based HTTP client that powers the tags + field controller. Methods: `search`, `getDocument`, `getDocuments`. Treat as internal — consumers should use the Twig tags above rather than `plugin.apiClient.*`.
+- **Plugin settings** (`src/models/Settings.php`) — native Craft `Model` with `EnvAttributeParserBehavior` on `serverApiUrl`, `publicApiUrl`, `index`, and `queryPath`. Visible at **Settings → Plugins → Collections Proxy**. Other fields: `titleField`, `itemFields`.
+- **`ApiClient` service** (`src/services/ApiClient.php`) — Guzzle-based HTTP client. Methods: `search`, `esSearch`, `getDocument`, `getDocuments`. Treat as internal — consumers should use the Twig tags rather than `plugin.apiClient.*`.
+- **`QueryLoader` service** (`src/services/QueryLoader.php`) — resolves and evaluates `<name>.php` query files under `queryPath`. Each file must `return` a `callable(array $params): array` or an `array`. Path-traversal protection built in. Internal — consumers should use `{% collectionEsSearch %}` rather than `plugin.queryLoader.*`.
 - **`SearchController`** (`src/controllers/SearchController.php`) — single action (`actionQuery`) behind the SearchLinkField's search box.
 
 ## Architecture
