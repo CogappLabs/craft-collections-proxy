@@ -21,7 +21,7 @@ The plugin makes no assumptions about the shape of the documents it returns — 
 
 The public surface is:
 
-1. **`SearchLinkField`** (`src/fields/SearchLinkField.php`) — a custom field type that lets editors search the Collections API and store a link to a collection document (persists `documentId`, `documentTitle`, `documentThumbnail`). The index is configurable per-field and falls back to the global plugin setting. Vanilla JS (no Sprig); posts to `SearchController::actionQuery` via `Craft.sendActionRequest`.
+1. **`SearchLinkField`** (`src/fields/SearchLinkField.php`) — a custom field type that lets editors search the Collections API and store a link to a collection document (persists `documentId`, `documentTitle`, `documentThumbnail`). Per-field settings for `index`, `thumbnailField`, and `titleField`, each falling back to the plugin's global setting (then `'title'` for titleField). Vanilla JS (no Sprig); posts to `SearchController::actionQuery` via `Craft.sendActionRequest`.
 2. **`{% collectionDocument 'index' id as doc %}` Twig tag** — fetches a single document for server-rendered item pages.
 3. **`{% collectionDocuments 'index' ids[, fields] as docs %}` Twig tag** — batch-fetches N documents via `_msearch` with an `ids` query, returns an array keyed by ID. Useful on index/listing templates that need lots of thumbnails in one round-trip.
 4. **`{% collectionSearch 'index', query[, perPage[, page]] as results %}` Twig tag** — runs a plain `?q=` text search and assigns the normalised `{results, totalResults, took}` shape. Intended for server-rendered fragments (e.g. Datastar SSE responses).

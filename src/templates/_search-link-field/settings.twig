@@ -15,3 +15,12 @@
     name: 'thumbnailField',
     value: field.thumbnailField,
 }) }}
+
+{{ forms.textField({
+    label: "Title field"|t('collections-proxy'),
+    instructions: "Optional. Name of the `_source` field to show as each result's title. Leave blank to use the plugin default (`#{defaultTitleField}`)."|t('collections-proxy'),
+    id: 'titleField',
+    name: 'titleField',
+    value: field.titleField,
+    placeholder: defaultTitleField,
+}) }}

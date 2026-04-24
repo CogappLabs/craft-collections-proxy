@@ -20,7 +20,7 @@ The plugin handles transport, caching-friendly server-side fetches, and the CP a
 
 ## What it gives you
 
-- **`SearchLinkField`** — a custom field type that lets editors search the Collections API and store a link to a collection document (persists `documentId`, `documentTitle`, `documentThumbnail`). Per-field settings: `index` (defaults to plugin global) and `thumbnailField` (name of the `_source` field holding a thumbnail URL; empty = no thumbnails in the search UI). Vanilla JS, no Sprig.
+- **`SearchLinkField`** — a custom field type that lets editors search the Collections API and store a link to a collection document (persists `documentId`, `documentTitle`, `documentThumbnail`). Per-field settings: `index` (defaults to plugin global), `thumbnailField` (name of the `_source` field holding a thumbnail URL; empty = no thumbnails in the search UI), and `titleField` (name of the `_source` field to show as each result's title; empty = fall back to the plugin's global `titleField`, then `title`). Vanilla JS, no Sprig.
 - **`{% collectionDocument 'index' id as doc %}`** — Twig tag for server-rendered item pages.
 - **`{% collectionDocuments 'index' ids[, fields] as docs %}`** — batch document fetch via `_msearch` + an `ids` query, returns an array keyed by ID.
 - **`{% collectionSearch 'index', query[, perPage[, page]] as results %}`** — run a `?q=` text search; assigns `{results, totalResults, took}`.
