@@ -2,7 +2,7 @@
 
 A Craft CMS 5 plugin that exposes four Twig tags and a `SearchLinkField` custom field for talking to any read-only HTTP API that speaks the Elasticsearch response shape.
 
-The plugin handles transport, caching-friendly server-side fetches, and the CP authoring UI. It makes no assumptions about the shape of the documents — field names, URL rewriting, and IIIF proxying are all the consuming site's concern.
+The plugin handles transport, server-side fetches, and the CP authoring UI. It makes no assumptions about the shape of the documents — field names, URL rewriting, and IIIF proxying are all the consuming site's concern.
 
 ## Contents
 
@@ -12,6 +12,7 @@ The plugin handles transport, caching-friendly server-side fetches, and the CP a
 - [Configuration](#configuration)
 - [Multi-environment setup](#multi-environment-setup)
 - [Verifying installation](#verifying-installation)
+- [Using `SearchLinkField`](#using-searchlinkfield)
 - [Twig tags](#twig-tags)
 - [Experimental: `collectionEsSearch`](#experimental-collectionessearch)
 - [Expected API contract](#expected-api-contract)
@@ -83,7 +84,7 @@ For anything that differs per environment you almost certainly want layer 3 (dri
 | `serverApiUrl` | URL | _(required)_ | Base URL for **server-side** fetches (the Twig tags). Safe to be an internal-only hostname. |
 | `publicApiUrl` | URL | _(required)_ | Base URL intended for **browser** use (React, Searchkit). The plugin itself only reads this via `getPublicApiUrl()`; you forward it to the frontend via a data attribute. |
 | `index` | string | _(required)_ | Default index name when a Twig tag or `SearchLinkField` doesn't pass one explicitly. |
-| `titleField` | string | `title` | Which `_source` key item pages use as the heading. Typically set in `config/collections-proxy.php`. |
+| `titleField` | string | `title` | Which `_source` key to use as the document title — consumed by item-page templates and by `SearchLinkField` (as the fallback when the per-field `titleField` is blank). Typically set in `config/collections-proxy.php`. |
 | `itemFields` | string | `''` (all) | Comma-separated `fields=` whitelist for `{% collectionDocument %}` / `{% collectionDocuments %}`. Narrowing this lets you take advantage of the backend's own allow-list. |
 | `queryPath` | path | `@config/queries` | Directory that holds `{% collectionEsSearch %}` PHP query files. _Experimental._ |
 
@@ -218,6 +219,56 @@ curl -sS "$COLLECTIONS_API_URL/api/v1/$COLLECTIONS_INDEX?perPage=1" | head -c 20
 ```
 
 If you see `0 hits in 0ms` and no exceptions, the plugin couldn't reach the backend — check `storage/logs/web-*.log` for the actual error (HTTP status, timeout, DNS). The tags never throw at render time; they log and return the empty shape.
+
+## Using `SearchLinkField`
+
+Add **Collection Search Link** as a custom field in the CP (Settings → Fields). The field stores a reference to one document from the Collections API — editors type a query, get live thumbnail + title results, and click to select.
+
+### Per-field settings
+
+| Setting | Falls back to | Purpose |
+|---|---|---|
+| **Index** | plugin-global `index` | Which backend index this field searches. Override for fields that should pick from a different index than the site default (e.g. a `people` field alongside an `artworks` field). Supports env vars. |
+| **Thumbnail field** | _(blank = no thumbnails)_ | Name of the `_source` key that holds each document's thumbnail URL (e.g. `thumbnail_url`, `iiif_thumbnail_url`). The plugin does no URL rewriting — whatever the API returns is stored and displayed. |
+| **Title field** | plugin-global `titleField`, then `title` | Name of the `_source` key to display as each result's title in the search UI and on the saved-document card. |
+
+### What gets stored
+
+The field persists three columns alongside your element (`field_{handle}_{key}` naming):
+
+- `documentId` — the `_id` of the selected document
+- `documentTitle` — a snapshot of the title at the time of selection
+- `documentThumbnail` — a snapshot of the thumbnail URL (blank if no `thumbnailField` is configured)
+
+The snapshots mean the saved-document card renders on edit screens without re-hitting the API every time.
+
+### Rendering the stored value
+
+```twig
+{% set link = entry.collectionItem %}
+{% if link and link.documentId %}
+  <a href="{{ url('item/' ~ link.documentId) }}">
+    {% if link.documentThumbnail %}
+      <img src="{{ link.documentThumbnail }}" alt="">
+    {% endif %}
+    <span>{{ link.documentTitle }}</span>
+  </a>
+{% endif %}
+```
+
+If you need the full live document (not just the stored snapshot — e.g. you want fields that weren't saved at selection time), pair `SearchLinkField` with `{% collectionDocument %}`:
+
+```twig
+{% set link = entry.collectionItem %}
+{% if link and link.documentId %}
+  {% collectionDocument settings.index link.documentId as doc %}
+  {# doc now has the full _source — render whatever you need #}
+{% endif %}
+```
+
+### Permissions and security
+
+The search box posts to `actions/collections-proxy/search/query`, gated by `requirePermission('accessCp')`. Non-CP users can't hit it. The `index` param is validated against a strict character allow-list before being sent downstream.
 
 ## Twig tags
 
